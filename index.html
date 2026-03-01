@@ -723,7 +723,7 @@ body::after {
             <div class="e-form">
               <input type="email" class="e-in" id="e-email" placeholder="your@email.com">
               <div class="e-btn-row">
-                <button class="e-btn" id="e-submit-btn" onclick="submitEmail()">Send My Breakdown →</button>
+                <button class="e-btn" id="e-submit-btn" onclick="submitEmail()">Download My Breakdown</button>
                 <a class="book-btn" id="book-btn" href="https://poweredbymuse.github.io/ourhouseeventrequest/" target="_blank">Submit Event Request →</a>
               </div>
             </div>
@@ -1052,84 +1052,90 @@ async function submitEmail(){
   const emailVal = $('e-email').value.trim();
   const nameVal  = $('e-name').value.trim();
   if(!emailVal||!emailVal.includes('@')){ $('e-email').style.borderColor='rgba(192,57,43,.6)'; return; }
-  if(!lastCalc.price){ alert("Run your numbers first before sending your breakdown."); return; }
+  if(!lastCalc.price){ alert("Run your numbers first before requesting your breakdown."); return; }
   $('e-email').style.borderColor='';
 
-  const btn = $('e-submit-btn');
-  btn.disabled = true;
-  btn.textContent = 'Generating…';
+  const btn  = $('e-submit-btn');
+  btn.disabled    = true;
+  btn.textContent = 'Loading...';
 
   const MAKE_WEBHOOK = 'https://hook.us2.make.com/zp2d57us5k9uop5guhxc6jmnpba9vafe';
+  const name = nameVal || 'Producer';
+  const lc   = lastCalc;
+  const room = S.roomKey ? {'cs':'Creative Suite','loft':'The Loft','fh':'Full House'}[S.roomKey] : '';
 
+  // POST name + email + calc data to Make (fire and forget)
   try {
-    // Load jsPDF if needed
-    if(!window.jspdf){
-      await new Promise((res,rej)=>{
-        const s=document.createElement("script");
-        s.src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";
-        s.onload=res; s.onerror=rej;
-        document.head.appendChild(s);
-      });
-    }
-
-    btn.textContent = 'Sending…';
-
-    // Build PDF using lastCalc data
-    const name     = nameVal || 'Producer';
-    const pdfB64   = buildBreakdownPDF(name, emailVal);
-    const pdfName  = name.replace(/[^a-z0-9]/gi,'_')+'_OurHouse_Breakdown.pdf';
-    const lc       = lastCalc;
-    const room     = S.roomKey ? {'cs':'Creative Suite','loft':'The Loft','fh':'Full House'}[S.roomKey] : '';
-    const model    = lc.rsElig ? 'Revenue Share' : 'Standard Hourly';
-
-    const payload = {
-      name,
-      email:         emailVal,
-      room,
-      room_rate:     S.roomRate||0,
-      is_member:     S.isMember ? 'Yes' : 'No',
-      model,
-      ticket_price:  lc.price||0,
-      tickets:       lc.tickets||0,
-      gross_revenue: lc.gross||0,
-      house_cap:     lc.houseCap||0,
-      rs_deposit:    lc.rsDepAmt||0,
-      rs_take:       lc.rsTake||0,
-      rs_net:        lc.rsNet||0,
-      hr_room_cost:  lc.hrRoomCost||0,
-      hr_deposit:    lc.hrDepAmt||0,
-      hr_remaining:  lc.hrRemaining||0,
-      hr_take:       lc.hrTake||0,
-      billable_hrs:  lc.billable||0,
-      breakeven:     lc.breakeven||0,
-      dep_breakeven: lc.depBreakeven||0,
-      hr_breakeven:  lc.hrBreakeven||0,
-      pdf_base64:    pdfB64,
-      pdf_filename:  pdfName,
-      submitted_at:  new Date().toISOString(),
-      source:        'calculator'
-    };
-
-    await fetch(MAKE_WEBHOOK, {
+    fetch(MAKE_WEBHOOK, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify(payload)
+      body: JSON.stringify({
+        name,
+        email:         emailVal,
+        room,
+        room_rate:     S.roomRate||0,
+        is_member:     S.isMember ? 'Yes' : 'No',
+        model:         lc.rsElig ? 'Revenue Share' : 'Standard Hourly',
+        ticket_price:  lc.price||0,
+        tickets:       lc.tickets||0,
+        gross_revenue: lc.gross||0,
+        house_cap:     lc.houseCap||0,
+        rs_deposit:    lc.rsDepAmt||0,
+        rs_take:       lc.rsTake||0,
+        hr_room_cost:  lc.hrRoomCost||0,
+        hr_deposit:    lc.hrDepAmt||0,
+        hr_take:       lc.hrTake||0,
+        billable_hrs:  lc.billable||0,
+        breakeven:     lc.breakeven||0,
+        hr_breakeven:  lc.hrBreakeven||0,
+        submitted_at:  new Date().toISOString(),
+        source:        'calculator'
+      })
     });
+  } catch(e){ console.warn('Webhook error:', e); }
+
+  // Load jsPDF and trigger immediate browser download
+  if(!window.jspdf){
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+    s.onload = () => triggerDownload(name);
+    s.onerror = () => {
+      btn.disabled = false;
+      btn.textContent = 'Download My Breakdown';
+      alert('Download unavailable. Please check your connection and try again.');
+    };
+    document.head.appendChild(s);
+  } else {
+    triggerDownload(name);
+  }
+}
+
+function triggerDownload(name){
+  const btn = $('e-submit-btn');
+  try {
+    const pdfB64  = buildBreakdownPDF(name);
+    const pdfName = (name.replace(/[^a-z0-9]/gi,'_')||'Producer')+'_OurHouse_Breakdown.pdf';
+    const link    = document.createElement('a');
+    link.href     = 'data:application/pdf;base64,'+pdfB64;
+    link.download = pdfName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 
     // Success state
     emailSubmitted = true;
     $('checklist-card').classList.remove('locked');
-    $('ck-lock').textContent = '↓ Click to download your free checklist';
+    $('ck-lock').textContent = 'Click to download your free checklist';
     show('e-conf', true);
     $('e-email').disabled = true;
-    btn.textContent = '✓ Sent';
-    $('e-conf').innerHTML = `✓ &nbsp;<strong>On its way, ${name.split(' ')[0]}.</strong> Check your inbox — your breakdown is headed there now.<br><span style="opacity:.7">We’ll follow up about booking your date at Our House.</span>`;
-
-  } catch(err) {
-    console.error('Send error:', err);
+    btn.textContent = 'Downloaded';
+    const first = name.split(' ')[0];
+    $('e-conf').innerHTML = 'Your breakdown is downloading now, <strong>'+first+'</strong>. Keep an eye on your inbox -- more from us is on the way.';
+  } catch(err){
+    console.error('PDF error:', err);
     btn.disabled = false;
-    btn.textContent = 'Send My Breakdown →';
-    alert('Something went wrong. Please try again or email info@ourhouse48th.com.');
+    btn.textContent = 'Download My Breakdown';
+    alert('Something went wrong. Please email info@ourhouse48th.com.');
   }
 }
 
