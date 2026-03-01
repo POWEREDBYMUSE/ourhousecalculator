@@ -1145,7 +1145,7 @@ function buildBreakdownPDF(name, email){
   const lc = lastCalc;
   const room = S.roomKey ? {'cs':'Creative Suite','loft':'The Loft','fh':'Full House'}[S.roomKey] : 'Not selected';
   const isRS = lc.rsElig;
-  const mon  = n => n==null ? '—' : '$'+Math.round(n).toLocaleString();
+  const mon  = n => n==null ? '--' : '$'+Math.round(n).toLocaleString();
 
   const rgb  = c => doc.setTextColor(c[0],c[1],c[2]);
   const fill = c => doc.setFillColor(c[0],c[1],c[2]);
@@ -1156,7 +1156,7 @@ function buildBreakdownPDF(name, email){
     fill(FOREST); doc.rect(0,0,PW,76,"F");
     fill(ORANGE); doc.rect(0,76,PW,2.5,"F");
     rgb([122,170,136]); doc.setFont("helvetica","bold"); doc.setFontSize(8);
-    doc.text("OUR HOUSE  ·  POWEREDBYMUSE", 36, 28);
+    doc.text("OUR HOUSE  |  POWEREDBYMUSE", 36, 28);
     doc.setFont("helvetica","normal"); doc.setFontSize(7);
     doc.text("South LA Creative Community Infrastructure", 36, 42);
     doc.text("Event Profit Breakdown", 36, 56);
@@ -1166,7 +1166,7 @@ function buildBreakdownPDF(name, email){
     fill(CREAM_D); doc.rect(0,PH-32,PW,32,"F");
     fill(ORANGE); doc.rect(0,PH-32,PW,1.5,"F");
     rgb(MUTED); doc.setFont("helvetica","normal"); doc.setFontSize(6.5);
-    doc.text("Our House  ·  POWEREDBYMUSE  ·  info@ourhouse48th.com  ·  South LA", 36, PH-11);
+    doc.text("Our House  |  POWEREDBYMUSE  |  info@ourhouse48th.com  |  South LA", 36, PH-11);
     doc.text("Page "+page, PW-36, PH-11, {align:"right"});
   }
 
@@ -1248,7 +1248,7 @@ function buildBreakdownPDF(name, email){
     return y+8;
   }
 
-  // ── Content ────────────────────────────────────────────────────
+  // -- Content ----------------------------------------------------
   chrome();
   let y=102;
 
@@ -1262,8 +1262,8 @@ function buildBreakdownPDF(name, email){
   // 01 Summary
   y=np(y,80); y=secHdr(y,"01 /","Your Booking Summary");
   y=kvTbl(y,[
-    ["Room",          room+"  ·  $"+S.roomRate+"/hr"],
-    ["Membership",    S.isMember?"Member — benefits applied":"Non-Member"],
+    ["Room",          room+"  .  $"+S.roomRate+"/hr"],
+    ["Membership",    S.isMember?"Member - benefits applied":"Non-Member"],
     ["Billable Hrs",  lc.billable.toFixed(1)+" hrs"],
     ["Ticket Price",  mon(lc.price)+" per ticket"],
     ["Est. Tickets",  lc.tickets+" tickets"],
@@ -1277,24 +1277,24 @@ function buildBreakdownPDF(name, email){
     const dep = S.isMember ? 0 : lc.rsDepAmt;
     metricCard(18,      y, cw-3, ch, "Deposit Due",
       S.isMember?"Waived":mon(dep),
-      S.isMember?"Member benefit — no deposit required":"30% of house cap · due within 48 hrs",
+      S.isMember?"Member benefit - no deposit required":"30% of house cap . due within 48 hrs",
       S.isMember?GRN:ORANGE);
     metricCard(18+cw,   y, cw-3, ch, "Our House Cap",
       mon(lc.houseCap),
-      "Room × hrs × 1.20 admin fee",
+      "Room x hrs x 1.20 admin fee",
       FOREST);
     metricCard(18+cw*2, y, cw-3, ch, "Your Est. Take",
       mon(lc.rsTake),
-      lc.tickets+" tickets × "+mon(lc.price)+" × 40%",
+      lc.tickets+" tickets x "+mon(lc.price)+" x 40%",
       GRN);
   } else {
     metricCard(18,      y, cw-3, ch, "Total Room Fee",
       mon(lc.hrRoomCost),
-      lc.billable.toFixed(1)+" hrs × $"+(S.isMember?Math.round(lc.memRate):S.roomRate)+"/hr"+(S.isMember?" (member rate)":""),
+      lc.billable.toFixed(1)+" hrs x $"+(S.isMember?Math.round(lc.memRate):S.roomRate)+"/hr"+(S.isMember?" (member rate)":""),
       FOREST);
     metricCard(18+cw,   y, cw-3, ch, "Deposit Due",
       mon(lc.hrDepAmt),
-      "50% · due within 48 hrs of acceptance",
+      "50% . due within 48 hrs of acceptance",
       ORANGE);
     metricCard(18+cw*2, y, cw-3, ch, "Your Net Take",
       mon(lc.hrTake),
@@ -1309,17 +1309,17 @@ function buildBreakdownPDF(name, email){
   if(isRS){
     const dep = S.isMember ? 0 : lc.rsDepAmt;
     plRows=[
-      ["Gross Ticket Revenue",  mon(lc.gross),           lc.tickets+" tickets × "+mon(lc.price)],
-      ["Our House Cap (60%)",   mon(lc.houseCap),        "Room fee × hrs × 1.20 admin"],
+      ["Gross Ticket Revenue",  mon(lc.gross),           lc.tickets+" tickets x "+mon(lc.price)],
+      ["Our House Cap (60%)",   mon(lc.houseCap),        "Room fee x hrs x 1.20 admin"],
       ["Your Gross Take (40%)", mon(lc.rsTake),          "40% of gross ticket revenue"],
-      ["Less: Deposit",         S.isMember?"Waived":"-"+mon(dep), "Applied at payout · non-refundable"],
+      ["Less: Deposit",         S.isMember?"Waived":"-"+mon(dep), "Applied at payout . non-refundable"],
       ["Your Net Take-Home",    mon(S.isMember?lc.rsTake:lc.rsNet), "After deposit settled"],
       ["Breakeven",             (lc.breakeven||0)+" tickets", "Tickets to hit house cap"],
     ];
   } else {
     plRows=[
-      ["Gross Ticket Revenue", mon(lc.gross),         lc.tickets+" tickets × "+mon(lc.price)],
-      ["Total Room Fee",       "-"+mon(lc.hrRoomCost),"Room fee · 100% of ticket sales above this is yours"],
+      ["Gross Ticket Revenue", mon(lc.gross),         lc.tickets+" tickets x "+mon(lc.price)],
+      ["Total Room Fee",       "-"+mon(lc.hrRoomCost),"Room fee . 100% of ticket sales above this is yours"],
       ["Your Net Take-Home",   mon(lc.hrTake),        lc.hrTake>=0?"Profit above room cost":"You need more tickets"],
       ["Deposit (50%)",        mon(lc.hrDepAmt),      "Due within 48 hrs of acceptance"],
       ["Remaining Balance",    mon(lc.hrRemaining),   "Due 24 hrs before event"],
@@ -1335,11 +1335,11 @@ function buildBreakdownPDF(name, email){
     const dep=S.isMember?0:lc.rsDepAmt;
     schedRows=[
       ["At acceptance (within 48 hrs)", S.isMember?"Waived":mon(dep), "Zelle, Cash App, or Venmo"],
-      ["After the event (5–7 days)","Payout processed","40% of ticket sales, deposit applied"],
+      ["After the event (5-7 days)","Payout processed","40% of ticket sales, deposit applied"],
     ];
   } else {
     schedRows=[
-      ["At acceptance (within 48 hrs)", mon(lc.hrDepAmt),    "50% deposit · Zelle, Cash App, or Venmo"],
+      ["At acceptance (within 48 hrs)", mon(lc.hrDepAmt),    "50% deposit . Zelle, Cash App, or Venmo"],
       ["24 hrs before event",           mon(lc.hrRemaining), "Remaining 50% of room fee"],
       ["After event",                   "Keep 100%",         "All ticket revenue is yours directly"],
     ];
@@ -1350,7 +1350,7 @@ function buildBreakdownPDF(name, email){
   y=np(y,80); y=secHdr(y,"05 /","Ready to Book?");
   y=kvTbl(y,[
     ["Submit request",   "poweredbymuse.github.io/ourhouseeventrequest"],
-    ["We review",        "Within 48 hrs — we’ll reach out if anything’s missing."],
+    ["We review",        "Within 48 hrs - we'll reach out if anything's missing."],
     ["Deposit due",      "Within 48 hrs of approval to hold your date."],
     ["Questions?",       "Email info@ourhouse48th.com"],
   ]);
