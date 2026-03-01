@@ -1048,26 +1048,322 @@ function updateScenario(val, silent){
 }
 
 // ── Email submit ─────────────────────────────────────────────────
-function submitEmail(){
-  const v = $('e-email').value.trim();
-  if(!v||!v.includes('@')){ $('e-email').style.borderColor='rgba(192,57,43,.6)'; return; }
+async function submitEmail(){
+  const emailVal = $('e-email').value.trim();
+  const nameVal  = $('e-name').value.trim();
+  if(!emailVal||!emailVal.includes('@')){ $('e-email').style.borderColor='rgba(192,57,43,.6)'; return; }
+  if(!lastCalc.price){ alert("Run your numbers first before sending your breakdown."); return; }
   $('e-email').style.borderColor='';
-  emailSubmitted = true;
 
-  // Unlock checklist
-  $('checklist-card').classList.remove('locked');
-  $('ck-lock').textContent = '↓ Click to download your free checklist';
+  const btn = $('e-submit-btn');
+  btn.disabled = true;
+  btn.textContent = 'Generating…';
 
-  show('e-conf',true);
-  $('e-email').disabled=true;
-  $('e-submit-btn').disabled=true;
-  $('e-submit-btn').textContent='✓ Sent';
+  const MAKE_WEBHOOK = 'https://hook.us2.make.com/zp2d57us5k9uop5guhxc6jmnpba9vafe';
 
-  // Personalize confirmation
-  const name = firstName();
-  if(name){
-    $('e-conf').innerHTML = `✓ &nbsp;<strong>You're in, ${name}.</strong> Check your inbox — your breakdown is on its way.<br><span style="opacity:.7">We'll follow up about booking your date at Our House.</span>`;
+  try {
+    // Load jsPDF if needed
+    if(!window.jspdf){
+      await new Promise((res,rej)=>{
+        const s=document.createElement("script");
+        s.src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";
+        s.onload=res; s.onerror=rej;
+        document.head.appendChild(s);
+      });
+    }
+
+    btn.textContent = 'Sending…';
+
+    // Build PDF using lastCalc data
+    const name     = nameVal || 'Producer';
+    const pdfB64   = buildBreakdownPDF(name, emailVal);
+    const pdfName  = name.replace(/[^a-z0-9]/gi,'_')+'_OurHouse_Breakdown.pdf';
+    const lc       = lastCalc;
+    const room     = S.roomKey ? {'cs':'Creative Suite','loft':'The Loft','fh':'Full House'}[S.roomKey] : '';
+    const model    = lc.rsElig ? 'Revenue Share' : 'Standard Hourly';
+
+    const payload = {
+      name,
+      email:         emailVal,
+      room,
+      room_rate:     S.roomRate||0,
+      is_member:     S.isMember ? 'Yes' : 'No',
+      model,
+      ticket_price:  lc.price||0,
+      tickets:       lc.tickets||0,
+      gross_revenue: lc.gross||0,
+      house_cap:     lc.houseCap||0,
+      rs_deposit:    lc.rsDepAmt||0,
+      rs_take:       lc.rsTake||0,
+      rs_net:        lc.rsNet||0,
+      hr_room_cost:  lc.hrRoomCost||0,
+      hr_deposit:    lc.hrDepAmt||0,
+      hr_remaining:  lc.hrRemaining||0,
+      hr_take:       lc.hrTake||0,
+      billable_hrs:  lc.billable||0,
+      breakeven:     lc.breakeven||0,
+      dep_breakeven: lc.depBreakeven||0,
+      hr_breakeven:  lc.hrBreakeven||0,
+      pdf_base64:    pdfB64,
+      pdf_filename:  pdfName,
+      submitted_at:  new Date().toISOString(),
+      source:        'calculator'
+    };
+
+    await fetch(MAKE_WEBHOOK, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(payload)
+    });
+
+    // Success state
+    emailSubmitted = true;
+    $('checklist-card').classList.remove('locked');
+    $('ck-lock').textContent = '↓ Click to download your free checklist';
+    show('e-conf', true);
+    $('e-email').disabled = true;
+    btn.textContent = '✓ Sent';
+    $('e-conf').innerHTML = `✓ &nbsp;<strong>On its way, ${name.split(' ')[0]}.</strong> Check your inbox — your breakdown is headed there now.<br><span style="opacity:.7">We’ll follow up about booking your date at Our House.</span>`;
+
+  } catch(err) {
+    console.error('Send error:', err);
+    btn.disabled = false;
+    btn.textContent = 'Send My Breakdown →';
+    alert('Something went wrong. Please try again or email info@ourhouse48th.com.');
   }
+}
+
+function buildBreakdownPDF(name, email){
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation:"portrait", unit:"pt", format:"letter" });
+  const PW=612, PH=792;
+  const FOREST=[12,55,34], ORANGE=[228,97,20], AMBER=[220,149,27];
+  const CREAM=[245,244,239], CREAM_D=[228,226,219], INK=[28,28,26], MUTED=[107,117,101];
+  const WHITE=[255,255,255], WARN=[192,57,43], GRN=[46,125,82], GRN_L=[238,246,241];
+  const AMBER_L=[253,246,227];
+  let page=1;
+  const lc = lastCalc;
+  const room = S.roomKey ? {'cs':'Creative Suite','loft':'The Loft','fh':'Full House'}[S.roomKey] : 'Not selected';
+  const isRS = lc.rsElig;
+  const mon  = n => n==null ? '—' : '$'+Math.round(n).toLocaleString();
+
+  const rgb  = c => doc.setTextColor(c[0],c[1],c[2]);
+  const fill = c => doc.setFillColor(c[0],c[1],c[2]);
+  const drw  = c => doc.setDrawColor(c[0],c[1],c[2]);
+
+  function chrome(){
+    fill(CREAM); doc.rect(0,0,PW,PH,"F");
+    fill(FOREST); doc.rect(0,0,PW,76,"F");
+    fill(ORANGE); doc.rect(0,76,PW,2.5,"F");
+    rgb([122,170,136]); doc.setFont("helvetica","bold"); doc.setFontSize(8);
+    doc.text("OUR HOUSE  ·  POWEREDBYMUSE", 36, 28);
+    doc.setFont("helvetica","normal"); doc.setFontSize(7);
+    doc.text("South LA Creative Community Infrastructure", 36, 42);
+    doc.text("Event Profit Breakdown", 36, 56);
+    doc.text("ourhouse48th.com", PW-36, 28, {align:"right"});
+    doc.text("info@ourhouse48th.com", PW-36, 42, {align:"right"});
+    fill(ORANGE); doc.rect(0,78.5,3.5,PH-112,"F");
+    fill(CREAM_D); doc.rect(0,PH-32,PW,32,"F");
+    fill(ORANGE); doc.rect(0,PH-32,PW,1.5,"F");
+    rgb(MUTED); doc.setFont("helvetica","normal"); doc.setFontSize(6.5);
+    doc.text("Our House  ·  POWEREDBYMUSE  ·  info@ourhouse48th.com  ·  South LA", 36, PH-11);
+    doc.text("Page "+page, PW-36, PH-11, {align:"right"});
+  }
+
+  function secHdr(y, num, title){
+    fill(CREAM_D); doc.rect(18,y,PW-36,22,"F");
+    fill(ORANGE); doc.rect(18,y,1.5,22,"F");
+    rgb(ORANGE); doc.setFont("helvetica","bold"); doc.setFontSize(7.5);
+    doc.text(num, 26, y+14.5);
+    rgb(FOREST); doc.setFontSize(8);
+    doc.text(title.toUpperCase(), 52, y+14.5);
+    return y+30;
+  }
+
+  function np(y,need){ if(y+need>PH-44){ doc.addPage(); page++; chrome(); return 102; } return y; }
+
+  function kvTbl(y, rows){
+    const cw1=140, rh=24;
+    rows.forEach((row,ri)=>{
+      fill(ri%2===0?WHITE:CREAM); doc.rect(18,y,PW-36,rh,"F");
+      rgb(FOREST); doc.setFont("helvetica","bold"); doc.setFontSize(8.5);
+      doc.text(row[0], 26, y+16);
+      rgb(INK); doc.setFont("helvetica","normal"); doc.setFontSize(8.5);
+      const vl=doc.splitTextToSize(row[1],PW-36-cw1-16);
+      doc.text(vl, 26+cw1, y+16);
+      y += vl.length>1 ? rh+(vl.length-1)*12 : rh;
+    });
+    drw(CREAM_D); doc.setLineWidth(0.5);
+    return y+8;
+  }
+
+  function metricCard(x, y, w, h, label, value, sub, vc){
+    fill(CREAM_D); doc.rect(x,y,w,h,"F");
+    rgb(MUTED); doc.setFont("helvetica","bold"); doc.setFontSize(6.5);
+    doc.text(label.toUpperCase(), x+12, y+14);
+    rgb(vc||INK); doc.setFont("helvetica","bold"); doc.setFontSize(18);
+    doc.text(value, x+12, y+36);
+    rgb(MUTED); doc.setFont("helvetica","normal"); doc.setFontSize(7.5);
+    const sl=doc.splitTextToSize(sub,w-20); doc.text(sl,x+12,y+50);
+  }
+
+  function plTbl(y, rows){
+    const cols=[200,90,PW-36-290], rh=26;
+    fill(FOREST); doc.rect(18,y,PW-36,rh,"F");
+    rgb(WHITE); doc.setFont("helvetica","bold"); doc.setFontSize(7.5);
+    doc.text("LINE ITEM",26,y+17); doc.text("AMOUNT",26+cols[0],y+17); doc.text("NOTES",26+cols[0]+cols[1],y+17);
+    y+=rh;
+    rows.forEach((row,ri)=>{
+      const isNet=row[0].includes("Net");
+      fill(isNet?GRN_L:(ri%2===0?WHITE:CREAM)); doc.rect(18,y,PW-36,rh,"F");
+      rgb(isNet?GRN:FOREST); doc.setFont("helvetica",isNet?"bold":"bold"); doc.setFontSize(8.5);
+      doc.text(row[0],26,y+17);
+      const isMinus=row[1].startsWith("-");
+      rgb(isNet?GRN:isMinus?WARN:INK); doc.setFont("helvetica",isNet?"bold":"normal"); doc.setFontSize(8.5);
+      doc.text(row[1],26+cols[0],y+17);
+      rgb(MUTED); doc.setFont("helvetica","normal"); doc.setFontSize(7.5);
+      const nl=doc.splitTextToSize(row[2],cols[2]-12); doc.text(nl,26+cols[0]+cols[1],y+17);
+      y+=rh;
+    });
+    drw(CREAM_D); doc.setLineWidth(0.5); doc.rect(18,y-rh*rows.length-rh,PW-36,rh*(rows.length+1),"S");
+    return y+8;
+  }
+
+  function schedTbl(y, rows){
+    const cols=[160,100,PW-36-260], rh=26;
+    fill(FOREST); doc.rect(18,y,PW-36,rh,"F");
+    rgb(WHITE); doc.setFont("helvetica","bold"); doc.setFontSize(7.5);
+    doc.text("WHEN",26,y+17); doc.text("AMOUNT",26+cols[0],y+17); doc.text("NOTES",26+cols[0]+cols[1],y+17);
+    y+=rh;
+    rows.forEach((row,ri)=>{
+      fill(ri%2===0?WHITE:CREAM); doc.rect(18,y,PW-36,rh,"F");
+      rgb(FOREST); doc.setFont("helvetica","bold"); doc.setFontSize(8.5); doc.text(row[0],26,y+17);
+      const isG=row[1]==="Waived"||row[1].includes("100%");
+      rgb(isG?GRN:ORANGE); doc.setFont("helvetica","bold"); doc.setFontSize(9); doc.text(row[1],26+cols[0],y+17);
+      rgb(INK); doc.setFont("helvetica","normal"); doc.setFontSize(8);
+      const nl=doc.splitTextToSize(row[2],cols[2]-12); doc.text(nl,26+cols[0]+cols[1],y+17);
+      y+=rh;
+    });
+    drw(CREAM_D); doc.setLineWidth(0.5); doc.rect(18,y-rh*rows.length-rh,PW-36,rh*(rows.length+1),"S");
+    return y+8;
+  }
+
+  // ── Content ────────────────────────────────────────────────────
+  chrome();
+  let y=102;
+
+  // Title
+  rgb(FOREST); doc.setFont("helvetica","bold"); doc.setFontSize(22);
+  doc.text("Event Profit Breakdown", 18, y); y+=28;
+  rgb(MUTED); doc.setFont("helvetica","italic"); doc.setFontSize(10);
+  doc.text("Prepared for "+name, 18, y); y+=14;
+  fill(ORANGE); doc.rect(18,y,PW-36,2,"F"); y+=12;
+
+  // 01 Summary
+  y=np(y,80); y=secHdr(y,"01 /","Your Booking Summary");
+  y=kvTbl(y,[
+    ["Room",          room+"  ·  $"+S.roomRate+"/hr"],
+    ["Membership",    S.isMember?"Member — benefits applied":"Non-Member"],
+    ["Billable Hrs",  lc.billable.toFixed(1)+" hrs"],
+    ["Ticket Price",  mon(lc.price)+" per ticket"],
+    ["Est. Tickets",  lc.tickets+" tickets"],
+    ["Gross Revenue", mon(lc.gross)],
+  ]);
+
+  // 02 Metrics
+  y=np(y,100); y=secHdr(y,"02 /","Your Numbers at a Glance");
+  const cw=(PW-36)/3, ch=76;
+  if(isRS){
+    const dep = S.isMember ? 0 : lc.rsDepAmt;
+    metricCard(18,      y, cw-3, ch, "Deposit Due",
+      S.isMember?"Waived":mon(dep),
+      S.isMember?"Member benefit — no deposit required":"30% of house cap · due within 48 hrs",
+      S.isMember?GRN:ORANGE);
+    metricCard(18+cw,   y, cw-3, ch, "Our House Cap",
+      mon(lc.houseCap),
+      "Room × hrs × 1.20 admin fee",
+      FOREST);
+    metricCard(18+cw*2, y, cw-3, ch, "Your Est. Take",
+      mon(lc.rsTake),
+      lc.tickets+" tickets × "+mon(lc.price)+" × 40%",
+      GRN);
+  } else {
+    metricCard(18,      y, cw-3, ch, "Total Room Fee",
+      mon(lc.hrRoomCost),
+      lc.billable.toFixed(1)+" hrs × $"+(S.isMember?Math.round(lc.memRate):S.roomRate)+"/hr"+(S.isMember?" (member rate)":""),
+      FOREST);
+    metricCard(18+cw,   y, cw-3, ch, "Deposit Due",
+      mon(lc.hrDepAmt),
+      "50% · due within 48 hrs of acceptance",
+      ORANGE);
+    metricCard(18+cw*2, y, cw-3, ch, "Your Net Take",
+      mon(lc.hrTake),
+      "Ticket revenue above room cost",
+      lc.hrTake>=0?GRN:WARN);
+  }
+  y+=ch+10;
+
+  // 03 P&L
+  y=np(y,160); y=secHdr(y,"03 /","Full P&L Projection");
+  let plRows;
+  if(isRS){
+    const dep = S.isMember ? 0 : lc.rsDepAmt;
+    plRows=[
+      ["Gross Ticket Revenue",  mon(lc.gross),           lc.tickets+" tickets × "+mon(lc.price)],
+      ["Our House Cap (60%)",   mon(lc.houseCap),        "Room fee × hrs × 1.20 admin"],
+      ["Your Gross Take (40%)", mon(lc.rsTake),          "40% of gross ticket revenue"],
+      ["Less: Deposit",         S.isMember?"Waived":"-"+mon(dep), "Applied at payout · non-refundable"],
+      ["Your Net Take-Home",    mon(S.isMember?lc.rsTake:lc.rsNet), "After deposit settled"],
+      ["Breakeven",             (lc.breakeven||0)+" tickets", "Tickets to hit house cap"],
+    ];
+  } else {
+    plRows=[
+      ["Gross Ticket Revenue", mon(lc.gross),         lc.tickets+" tickets × "+mon(lc.price)],
+      ["Total Room Fee",       "-"+mon(lc.hrRoomCost),"Room fee · 100% of ticket sales above this is yours"],
+      ["Your Net Take-Home",   mon(lc.hrTake),        lc.hrTake>=0?"Profit above room cost":"You need more tickets"],
+      ["Deposit (50%)",        mon(lc.hrDepAmt),      "Due within 48 hrs of acceptance"],
+      ["Remaining Balance",    mon(lc.hrRemaining),   "Due 24 hrs before event"],
+      ["Breakeven",            (lc.hrBreakeven||0)+" tickets","Tickets to cover full room fee"],
+    ];
+  }
+  y=plTbl(y, plRows);
+
+  // 04 Payment Schedule
+  y=np(y,120); y=secHdr(y,"04 /","Deposit + Payment Schedule");
+  let schedRows;
+  if(isRS){
+    const dep=S.isMember?0:lc.rsDepAmt;
+    schedRows=[
+      ["At acceptance (within 48 hrs)", S.isMember?"Waived":mon(dep), "Zelle, Cash App, or Venmo"],
+      ["After the event (5–7 days)","Payout processed","40% of ticket sales, deposit applied"],
+    ];
+  } else {
+    schedRows=[
+      ["At acceptance (within 48 hrs)", mon(lc.hrDepAmt),    "50% deposit · Zelle, Cash App, or Venmo"],
+      ["24 hrs before event",           mon(lc.hrRemaining), "Remaining 50% of room fee"],
+      ["After event",                   "Keep 100%",         "All ticket revenue is yours directly"],
+    ];
+  }
+  y=schedTbl(y, schedRows);
+
+  // 05 Next Steps
+  y=np(y,80); y=secHdr(y,"05 /","Ready to Book?");
+  y=kvTbl(y,[
+    ["Submit request",   "poweredbymuse.github.io/ourhouseeventrequest"],
+    ["We review",        "Within 48 hrs — we’ll reach out if anything’s missing."],
+    ["Deposit due",      "Within 48 hrs of approval to hold your date."],
+    ["Questions?",       "Email info@ourhouse48th.com"],
+  ]);
+
+  // Footer
+  y=np(y,50); y+=8;
+  fill([238,244,240]); doc.rect(18,y,PW-36,36,"F");
+  fill(FOREST); doc.rect(18,y,3,36,"F");
+  rgb(INK); doc.setFont("helvetica","normal"); doc.setFontSize(8.5);
+  const ft="Breakdown based on your submitted numbers. Final amounts confirmed in your booking agreement.";
+  doc.text(doc.splitTextToSize(ft,PW-56),28,y+13);
+
+  return doc.output("datauristring").split(",")[1];
 }
 
 // ── Download checklist — branded PDF ────────────────────────────
