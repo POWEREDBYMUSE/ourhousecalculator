@@ -1,0 +1,1648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Calculate Your Event's Profit — Our House</title>
+<link href="https://fonts.googleapis.com/css2?family=Gloock&family=DM+Mono:wght@300;400;500&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --forest:    #0c3722;
+  --forest-d:  #081f14;
+  --orange:    #e46114;
+  --orange-lt: #f07d38;
+  --amber:     #dc951b;
+  --amber-lt:  #edb040;
+  --cream:     #f5f4ef;
+  --surface:   rgba(245,244,239,0.06);
+  --border:    rgba(245,244,239,0.12);
+  --muted:     rgba(245,244,239,0.42);
+  --dim:       rgba(245,244,239,0.22);
+  --warn:      #c0392b;
+}
+
+*, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+html { scroll-behavior:smooth; }
+
+body {
+  font-family:'DM Mono',monospace;
+  background:var(--forest-d);
+  color:var(--cream);
+  min-height:100vh;
+  overflow-x:hidden;
+}
+
+body::after {
+  content:''; position:fixed; inset:0;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events:none; z-index:0;
+}
+
+/* ── TOP BAR ── */
+.topbar {
+  background:var(--forest-d);
+  border-bottom:1px solid var(--border);
+  padding:0 40px;
+  display:flex; align-items:center; justify-content:space-between;
+  min-height:52px; position:relative; z-index:10;
+}
+.topbar::after {
+  content:''; position:absolute; bottom:0; left:0; right:0; height:2px;
+  background:linear-gradient(90deg, var(--orange), var(--amber), transparent 70%);
+}
+.tb-brand { font-family:'Gloock',serif; font-size:17px; letter-spacing:.1em; color:var(--cream); }
+.tb-tag   { font-size:12px; letter-spacing:.3em; text-transform:uppercase; color:var(--muted); }
+
+/* ── STICKY RESULTS BAR ── */
+.sticky-bar {
+  position:sticky; top:0; z-index:100;
+  background:rgba(8,31,20,0.97);
+  border-bottom:1px solid var(--border);
+  backdrop-filter:blur(12px);
+  -webkit-backdrop-filter:blur(12px);
+  padding:0 40px;
+  display:none; align-items:center; justify-content:space-between;
+  min-height:58px;
+  transition:transform .3s;
+}
+.sticky-bar::after {
+  content:''; position:absolute; bottom:0; left:0; right:0; height:2px;
+  background:linear-gradient(90deg, var(--orange), var(--amber), transparent 70%);
+}
+.sticky-bar.show { display:flex; }
+.sb-left { display:flex; align-items:center; gap:6px; }
+.sb-eth-label { font-family:'Gloock',serif; font-size:21px; font-weight:400; color:var(--cream); white-space:nowrap; margin-right:20px; }
+.sb-panels { display:flex; gap:24px; align-items:center; }
+.sb-panel { display:flex; flex-direction:column; align-items:center; gap:1px; }
+.sb-lbl { font-size:11px; letter-spacing:.2em; text-transform:uppercase; color:var(--muted); }
+.sb-val { font-family:'Gloock',serif; font-size:23px; font-weight:400; line-height:1; }
+.sb-val.ora { color:var(--orange); }
+.sb-val.amb { color:var(--amber); }
+.sb-div { width:1px; height:32px; background:var(--border); }
+.sb-winner {
+  font-size:11px; letter-spacing:.15em; text-transform:uppercase;
+  padding:4px 10px; border-radius:999px; border:1px solid;
+}
+.sb-winner.rs { color:var(--orange); border-color:rgba(228,97,20,.4); background:rgba(228,97,20,.08); }
+.sb-winner.hr { color:var(--amber); border-color:rgba(220,149,27,.4); background:rgba(220,149,27,.08); }
+.sb-winner.tie { color:var(--muted); border-color:var(--border); }
+
+/* ── HERO ── */
+.hero {
+  background:var(--forest);
+  padding:80px 40px 72px;
+  text-align:center;
+  position:relative; overflow:hidden; z-index:1;
+}
+.hero::before {
+  content:'POWEREDBYMUSE';
+  position:absolute; font-family:'Gloock',serif; font-size:100px;
+  color:rgba(245,244,239,.025); top:50%; left:50%;
+  transform:translate(-50%,-50%); white-space:nowrap; letter-spacing:.2em;
+  pointer-events:none;
+}
+.hero::after {
+  content:''; position:absolute; bottom:0; left:0; right:0; height:1px;
+  background:linear-gradient(90deg, transparent, var(--amber), transparent);
+}
+.eyebrow {
+  font-size:12px; letter-spacing:.4em; text-transform:uppercase;
+  color:var(--orange); margin-bottom:22px;
+  opacity:0; animation:up .6s .1s forwards;
+}
+.hero h1 {
+  font-family:'Gloock',serif;
+  font-size:clamp(44px,7.5vw,90px);
+  font-weight:400; line-height:1.04; letter-spacing:-.02em;
+  color:var(--cream); margin-bottom:22px;
+  opacity:0; animation:up .7s .2s forwards;
+}
+.hero h1 em { font-style:italic; color:rgba(245,244,239,.45); }
+.hero-sub {
+  font-family:'Gloock',serif; font-style:italic;
+  font-size:clamp(15px,2vw,18px); color:var(--muted);
+  max-width:460px; margin:0 auto 38px; line-height:1.7;
+  opacity:0; animation:up .7s .3s forwards;
+}
+.live-badge {
+  display:inline-flex; align-items:center; gap:8px;
+  border:1px solid rgba(220,149,27,.35); padding:8px 20px;
+  font-size:12px; letter-spacing:.22em; text-transform:uppercase; color:var(--amber);
+  border-radius:999px;
+  opacity:0; animation:up .7s .4s forwards;
+}
+.pulse { display:inline-block; width:6px; height:6px; background:var(--orange); border-radius:50%; animation:blink 2s infinite; margin-right:2px; }
+
+/* ── WRAP ── */
+.wrap { max-width:1020px; margin:0 auto; padding:36px 24px 80px; position:relative; z-index:1; }
+
+/* ── CARDS ── */
+.card {
+  background:var(--surface); border:1px solid var(--border);
+  margin-bottom:3px; position:relative; overflow:hidden;
+  border-radius:16px;
+  opacity:0; animation:up .6s forwards;
+}
+.card:nth-child(1){animation-delay:.45s}
+.card:nth-child(2){animation-delay:.55s}
+.card:nth-child(3){animation-delay:.62s}
+.card::before {
+  content:''; position:absolute; top:0; left:0; right:0; height:2px;
+  background:linear-gradient(90deg, var(--orange), var(--amber), transparent 60%);
+}
+.card-inner { padding:32px 38px; }
+.card-hd { display:flex; align-items:center; gap:14px; margin-bottom:26px; }
+.card-num  { font-family:'Gloock',serif; font-size:14px; letter-spacing:.18em; color:var(--orange); flex-shrink:0; }
+.card-title { font-family:'Syne',sans-serif; font-size:15px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--cream); }
+.card-rule { flex:1; height:1px; background:var(--border); }
+
+/* ── ROOM GRID ── */
+.room-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:12px; }
+.room-card {
+  border:1px solid var(--border); padding:18px 16px;
+  cursor:pointer; transition:all .2s; background:transparent; position:relative; overflow:hidden;
+  border-radius:12px;
+}
+.room-card::after {
+  content:''; position:absolute; bottom:0; left:0; right:0; height:2px;
+  background:var(--orange); transform:scaleX(0); transition:transform .25s;
+}
+.room-card:hover  { border-color:rgba(228,97,20,.4); background:rgba(228,97,20,.05); }
+.room-card.sel    { border-color:var(--orange); background:rgba(228,97,20,.08); }
+.room-card.sel::after { transform:scaleX(1); }
+.rm-name { font-family:'Syne',sans-serif; font-size:15px; font-weight:700; letter-spacing:.05em; color:var(--cream); margin-bottom:4px; }
+.rm-rate { font-family:'Gloock',serif; font-size:29px; line-height:1.1; color:var(--cream); margin-bottom:6px; }
+.rm-rate sub { font-size:14px; color:var(--muted); font-family:'DM Mono',monospace; vertical-align:baseline; }
+.rm-cap {
+  display:inline-flex; align-items:center; gap:4px;
+  font-size:12px; letter-spacing:.12em; text-transform:uppercase;
+  color:var(--muted); border:1px solid var(--border); padding:3px 8px; margin-bottom:7px;
+}
+.rm-cap.over { color:var(--warn); border-color:rgba(192,57,43,.35); }
+.rm-desc { font-size:13px; letter-spacing:.05em; color:var(--muted); line-height:1.55; }
+
+.cap-err {
+  display:none; background:rgba(192,57,43,.1); border:1px solid rgba(192,57,43,.25);
+  border-left:3px solid var(--warn); padding:10px 14px;
+  font-size:13px; letter-spacing:.08em; color:#e07a5f; margin-top:10px; line-height:1.6;
+  border-radius:8px;
+}
+.cap-err.show { display:block; }
+
+/* ── INPUTS ── */
+.time-row { display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:12px; margin:16px 0 12px; }
+.ig { display:flex; flex-direction:column; gap:6px; }
+.il { font-size:12px; letter-spacing:.2em; text-transform:uppercase; color:var(--muted); }
+.ih {
+  background:rgba(245,244,239,.06); border:1px solid var(--border);
+  color:var(--cream); font-family:'DM Mono',monospace; font-size:18px;
+  padding:11px 13px; outline:none; width:100%; transition:all .2s;
+  border-radius:8px;
+}
+.ih:focus { border-color:var(--orange); background:rgba(228,97,20,.08); }
+.ih::placeholder { color:var(--dim); }
+.hint { font-size:12px; letter-spacing:.07em; color:var(--muted); }
+
+.comped-note {
+  padding:11px 14px; background:rgba(220,149,27,.08); border:1px solid rgba(220,149,27,.25);
+  font-size:13px; letter-spacing:.08em; color:var(--cream); line-height:1.65;
+  border-radius:8px;
+}
+
+/* ── MEMBER TOGGLE ── */
+.tog-row {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:15px 18px; border:1px solid var(--border); margin-bottom:12px;
+  cursor:pointer; user-select:none; transition:all .2s;
+  border-radius:12px;
+}
+.tog-row:hover { border-color:rgba(228,97,20,.4); background:rgba(228,97,20,.05); }
+.tog-lbl strong { display:block; font-family:'Syne',sans-serif; font-size:15px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--cream); margin-bottom:3px; }
+.tog-lbl small  { font-size:13px; color:var(--muted); letter-spacing:.07em; }
+.knob { width:42px; height:23px; background:rgba(245,244,239,.15); border-radius:12px; position:relative; transition:background .2s; flex-shrink:0; }
+.knob.on { background:var(--orange); }
+.knob::after { content:''; position:absolute; width:17px; height:17px; background:var(--cream); border-radius:50%; top:3px; left:3px; transition:transform .2s; box-shadow:0 1px 3px rgba(0,0,0,.3); }
+.knob.on::after { transform:translateX(19px); }
+
+.mem-note {
+  display:none; padding:10px 14px; background:rgba(220,149,27,.08); border:1px solid rgba(220,149,27,.25);
+  border-left:3px solid var(--amber); font-size:13px; letter-spacing:.08em; color:var(--cream); line-height:1.65; margin-bottom:12px;
+  border-radius:8px;
+}
+.mem-note.show { display:block; }
+.nonmem-note { font-size:13px; letter-spacing:.08em; color:var(--muted); line-height:1.7; padding:2px 4px; }
+.nonmem-note a { color:var(--amber); text-decoration:none; }
+
+/* ── EV GRID ── */
+.ev-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; }
+
+/* ── ALERTS ── */
+.alert {
+  display:none; padding:10px 14px; background:rgba(192,57,43,.1);
+  border:1px solid rgba(192,57,43,.25); border-left:3px solid var(--warn);
+  font-size:13px; letter-spacing:.08em; color:#e07a5f; margin-top:10px; line-height:1.6;
+  border-radius:8px;
+}
+.alert.show { display:block; }
+
+/* ── RESULTS ── */
+.results { display:none; margin-top:3px; }
+.results.show { display:block; }
+.live-row {
+  display:flex; justify-content:flex-end; align-items:center; gap:6px;
+  padding:10px 0; font-size:12px; letter-spacing:.15em; text-transform:uppercase; color:var(--muted);
+}
+.pulse2::before { content:''; display:inline-block; width:6px; height:6px; background:var(--orange); border-radius:50%; margin-right:5px; animation:blink 2s infinite; vertical-align:middle; }
+
+/* ── GREETING ── */
+.greeting-bar {
+  padding:22px 28px; background:rgba(228,97,20,.07); border:1px solid rgba(228,97,20,.18);
+  border-radius:12px; margin-bottom:3px; display:none;
+}
+.greeting-bar.show { display:block; }
+.greeting-top { display:flex; align-items:baseline; justify-content:space-between; flex-wrap:wrap; gap:4px; margin-bottom:14px; }
+.greeting-text { font-family:'Gloock',serif; font-size:21px; color:var(--cream); }
+.greeting-text em { font-style:italic; color:var(--orange); }
+.greeting-sub { font-size:13px; color:var(--muted); letter-spacing:.08em; }
+
+
+/* ── COMPARISON ── */
+.cmp { display:grid; grid-template-columns:1fr 1fr; gap:3px; }
+
+.panel { padding:36px 32px; position:relative; overflow:hidden; border:1px solid var(--border); border-radius:16px; }
+.panel::before { content:''; position:absolute; top:0; left:0; right:0; height:3px; }
+.panel.rev  { background:rgba(228,97,20,.07);  border-color:rgba(228,97,20,.22); }
+.panel.hr   { background:rgba(220,149,27,.06); border-color:rgba(220,149,27,.2); }
+.panel.rev::before { background:linear-gradient(90deg, var(--orange), var(--orange-lt)); }
+.panel.hr::before  { background:linear-gradient(90deg, var(--amber), var(--amber-lt)); }
+.panel.winner { box-shadow:0 0 0 2px rgba(245,244,239,.15); }
+.winner-badge {
+  display:none; position:absolute; top:14px; right:14px;
+  font-size:11px; letter-spacing:.18em; text-transform:uppercase;
+  padding:4px 10px; border-radius:999px;
+}
+.panel.rev .winner-badge { background:rgba(228,97,20,.2); color:var(--orange); border:1px solid rgba(228,97,20,.35); }
+.panel.hr  .winner-badge { background:rgba(220,149,27,.2); color:var(--amber); border:1px solid rgba(220,149,27,.35); }
+.winner-badge.show { display:block; }
+
+.p-eye { font-size:12px; letter-spacing:.25em; text-transform:uppercase; margin-bottom:5px; }
+.panel.rev .p-eye { color:var(--orange); }
+.panel.hr  .p-eye { color:var(--amber); }
+.p-title { font-family:'Gloock',serif; font-size:25px; font-weight:400; color:var(--cream); margin-bottom:24px; }
+
+.take-lbl { font-size:12px; letter-spacing:.22em; text-transform:uppercase; color:var(--muted); margin-bottom:6px; }
+.take-num {
+  font-family:'Gloock',serif; font-size:clamp(46px,6.5vw,68px);
+  font-weight:400; line-height:1; margin-bottom:5px;
+}
+.panel.rev .take-num { color:var(--orange); }
+.panel.hr  .take-num { color:var(--amber); }
+.take-note { font-family:'Gloock',serif; font-style:italic; font-size:14px; color:var(--muted); margin-bottom:20px; }
+
+/* ── BREAKEVEN STAT ── */
+.breakeven-stat {
+  display:none; margin-bottom:20px;
+  padding:14px 16px; background:rgba(245,244,239,.04); border:1px solid var(--border);
+  border-radius:10px;
+}
+.breakeven-stat.show { display:flex; align-items:center; gap:14px; }
+.be-num { font-family:'Gloock',serif; font-size:32px; line-height:1; }
+.panel.rev .be-num { color:var(--orange); }
+.panel.hr  .be-num { color:var(--amber); }
+.be-right { display:flex; flex-direction:column; gap:2px; }
+.be-lbl { font-size:11px; letter-spacing:.2em; text-transform:uppercase; color:var(--muted); }
+.be-note { font-size:13px; color:rgba(245,244,239,.6); letter-spacing:.05em; line-height:1.45; }
+
+.bdown { display:flex; flex-direction:column; margin-bottom:14px; }
+.brow  { display:flex; justify-content:space-between; align-items:baseline; padding:9px 0; border-bottom:1px solid rgba(245,244,239,.07); }
+.brow:last-child { border-bottom:none; }
+.brow-sub { font-size:12px; letter-spacing:.07em; color:rgba(245,244,239,.3); padding:0 0 9px 0; border-bottom:1px solid rgba(245,244,239,.07); line-height:1.5; font-style:italic; }
+.blbl { font-size:12px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); }
+.bval { font-size:16px; color:var(--cream); }
+.bval.ora  { color:var(--orange); }
+.bval.amb  { color:var(--amber); }
+.bval.dim  { color:var(--muted); }
+.bval.warn { color:#e07a5f; }
+
+.pcallout {
+  display:none; padding:12px 14px; margin-bottom:12px;
+  font-size:13px; letter-spacing:.07em; line-height:1.7; border-left:3px solid;
+  border-radius:8px;
+}
+.pcallout.show { display:block; }
+.pcallout.dep  { background:rgba(192,57,43,.08); border-color:var(--warn); color:rgba(245,244,239,.75); }
+.pcallout.mem  { background:rgba(220,149,27,.08); border-color:var(--amber); color:rgba(245,244,239,.75); }
+.pcallout-t { font-size:12px; letter-spacing:.2em; text-transform:uppercase; margin-bottom:6px; }
+.pcallout.dep .pcallout-t { color:#e07a5f; }
+.pcallout.mem .pcallout-t { color:var(--amber); }
+
+/* ── SCENARIO SLIDER ── */
+.scenario-bar {
+  display:none; margin-top:3px;
+  background:var(--surface); border:1px solid var(--border);
+  padding:24px 32px; border-radius:16px;
+}
+.scenario-bar.show { display:block; }
+.sc-hd { display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; }
+.sc-title { font-size:12px; letter-spacing:.25em; text-transform:uppercase; color:var(--muted); }
+.sc-val-display { font-family:'Gloock',serif; font-size:25px; color:var(--cream); }
+.sc-val-display em { font-style:normal; color:var(--orange); }
+.slider-wrap { position:relative; }
+.sc-slider {
+  width:100%; -webkit-appearance:none; appearance:none;
+  height:4px; background:var(--border); border-radius:2px; outline:none; cursor:pointer;
+}
+.sc-slider::-webkit-slider-thumb {
+  -webkit-appearance:none; appearance:none;
+  width:20px; height:20px; border-radius:50%;
+  background:var(--orange); cursor:pointer;
+  box-shadow:0 0 0 3px rgba(228,97,20,.25), 0 2px 6px rgba(0,0,0,.4);
+  transition:box-shadow .2s;
+}
+.sc-slider::-webkit-slider-thumb:hover { box-shadow:0 0 0 6px rgba(228,97,20,.2), 0 2px 6px rgba(0,0,0,.4); }
+.sc-slider::-moz-range-thumb {
+  width:20px; height:20px; border:none; border-radius:50%;
+  background:var(--orange); cursor:pointer;
+}
+.sc-ticks { display:flex; justify-content:space-between; margin-top:8px; }
+.sc-tick { font-size:12px; letter-spacing:.07em; color:var(--dim); }
+.sc-cmp-mini { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:18px; }
+.sc-mini-panel { padding:14px 16px; border-radius:10px; border:1px solid var(--border); }
+.sc-mini-panel.rev { background:rgba(228,97,20,.05); border-color:rgba(228,97,20,.18); }
+.sc-mini-panel.hr  { background:rgba(220,149,27,.04); border-color:rgba(220,149,27,.15); }
+.sc-mini-lbl { font-size:11px; letter-spacing:.18em; text-transform:uppercase; margin-bottom:4px; }
+.sc-mini-panel.rev .sc-mini-lbl { color:var(--orange); }
+.sc-mini-panel.hr  .sc-mini-lbl { color:var(--amber); }
+.sc-mini-val { font-family:'Gloock',serif; font-size:27px; }
+.sc-mini-panel.rev .sc-mini-val { color:var(--orange); }
+.sc-mini-panel.hr  .sc-mini-val { color:var(--amber); }
+.sc-mini-note { font-size:12px; color:var(--muted); letter-spacing:.05em; margin-top:2px; }
+
+
+
+/* ── EMAIL / CTA ── */
+.cta-wrap {
+  display:none; margin-top:3px;
+  background:var(--forest); padding:52px 44px;
+  position:relative; overflow:hidden;
+  border:1px solid var(--border);
+  border-radius:16px;
+}
+.cta-wrap.show { display:block; }
+.cta-wrap::before { content:''; position:absolute; top:0;left:0;right:0; height:3px; background:linear-gradient(90deg,var(--orange),var(--amber)); }
+.cta-wrap::after {
+  content:'POWEREDBYMUSE'; position:absolute;
+  font-family:'Gloock',serif; font-size:90px;
+  color:rgba(245,244,239,.025); top:50%; right:-20px; transform:translateY(-50%);
+  pointer-events:none; white-space:nowrap; letter-spacing:.15em;
+}
+
+.cta-inner { position:relative; z-index:1; }
+.cta-layout { display:grid; grid-template-columns:3fr 2fr; gap:48px; align-items:start; }
+.cta-left {}
+.e-eye  { font-size:12px; letter-spacing:.3em; text-transform:uppercase; color:var(--orange); margin-bottom:12px; }
+.cta-title { font-family:'Gloock',serif; font-size:clamp(24px,3.5vw,36px); font-weight:400; color:var(--cream); line-height:1.15; margin-bottom:10px; }
+.cta-sub   { font-size:14px; color:var(--muted); letter-spacing:.08em; margin-bottom:28px; line-height:1.65; }
+
+/* Email form */
+.e-form { display:flex; flex-direction:column; gap:10px; }
+.e-btn-row { display:flex; gap:10px; flex-wrap:wrap; }
+.e-in {
+  background:rgba(245,244,239,.07); border:1px solid var(--border);
+  font-family:'DM Mono',monospace; font-size:17px; color:var(--cream);
+  padding:13px 18px; outline:none; border-radius:8px; transition:all .2s;
+}
+.e-in:focus { background:rgba(228,97,20,.1); border-color:var(--orange); }
+.e-in::placeholder { color:var(--dim); }
+.e-btn {
+  background:var(--orange); color:var(--cream); border:none;
+  font-family:'DM Mono',monospace; font-size:13px; letter-spacing:.2em; text-transform:uppercase;
+  padding:14px 22px; cursor:pointer; white-space:nowrap; transition:all .2s;
+  border-radius:8px; text-align:center;
+}
+.e-btn:hover { background:var(--orange-lt); transform:translateY(-1px); }
+.e-btn:disabled { opacity:.5; cursor:default; transform:none; }
+.e-conf { display:none; font-size:14px; color:var(--amber); letter-spacing:.1em; margin-top:8px; line-height:1.6; }
+.e-conf.show { display:block; }
+.e-disc { font-size:12px; color:var(--dim); letter-spacing:.07em; margin-top:8px; line-height:1.5; }
+
+/* Download / CTA right */
+.cta-right { display:flex; flex-direction:column; margin-top:-28px; }
+.checklist-card {
+  padding:28px 26px; border:1px solid rgba(228,97,20,.6);
+  background:rgba(12,55,34,0.7); border-radius:12px;
+  cursor:pointer; transition:all .2s;
+  display:flex; flex-direction:column;
+  position:relative; overflow:hidden;
+}
+.checklist-card::before {
+  content:''; position:absolute; top:0; left:0; right:0; height:3px;
+  background:linear-gradient(90deg, var(--orange), var(--amber));
+}
+.checklist-card:hover { border-color:var(--orange); background:rgba(20,77,46,0.8); transform:translateY(-1px); }
+.checklist-card.locked { opacity:.7; cursor:default; pointer-events:none; }
+.ck-eyebrow { font-size:12px; letter-spacing:.28em; text-transform:uppercase; color:var(--orange); margin-bottom:12px; }
+.ck-title { font-family:'Gloock',serif; font-size:27px; color:var(--cream); margin-bottom:14px; line-height:1.2; }
+.ck-desc { font-size:16px; color:rgba(245,244,239,.9); letter-spacing:.03em; line-height:1.75; flex:1; }
+.ck-lock { font-size:13px; color:var(--orange); letter-spacing:.12em; margin-top:20px; padding-top:16px; border-top:1px solid rgba(228,97,20,.3); }
+
+.book-btn {
+  display:inline-block; text-align:center; text-decoration:none;
+  padding:14px 20px; background:transparent;
+  border:1px solid rgba(245,244,239,.25); border-radius:8px;
+  font-family:'DM Mono',monospace; font-size:13px; letter-spacing:.15em; text-transform:uppercase;
+  color:var(--cream); cursor:pointer; transition:all .2s; white-space:nowrap;
+}
+.book-btn:hover { border-color:var(--amber); color:var(--amber); background:rgba(220,149,27,.06); }
+
+/* ── FOOTER ── */
+.footer {
+  text-align:center; padding:36px 24px 52px;
+  border-top:1px solid var(--border); margin-top:3px;
+  position:relative; z-index:1;
+}
+.footer-logo { font-family:'Gloock',serif; font-size:16px; letter-spacing:.45em; text-transform:uppercase; color:var(--muted); }
+.footer-line { width:40px; height:1px; background:linear-gradient(90deg,var(--orange),var(--amber)); margin:10px auto 0; }
+
+@keyframes up    { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+@media(max-width:720px){
+  .sticky-bar { padding:0 16px; }
+  .sb-panels { gap:14px; }
+  .sb-val { font-size:19px; }
+  .hero { padding:56px 20px 48px; }
+  .card-inner { padding:24px 20px; }
+  .room-grid { grid-template-columns:1fr; }
+  .cmp { grid-template-columns:1fr; }
+  .ev-grid { grid-template-columns:1fr 1fr; }
+  .time-row { grid-template-columns:1fr 1fr; }
+  .cta-layout { grid-template-columns:1fr; gap:28px; }
+  .sc-cmp-mini { grid-template-columns:1fr 1fr; }
+  .topbar { padding:0 16px; }
+}
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="tb-brand">Our House</div>
+  <div class="tb-tag">POWEREDBYMUSE &nbsp;·&nbsp; South LA</div>
+</div>
+
+<!-- STICKY RESULTS BAR -->
+<div class="sticky-bar" id="sticky-bar">
+  <div class="sb-left">
+    <div class="sb-eth-label">Estimated Take-Home</div>
+  </div>
+  <div class="sb-panels">
+    <div class="sb-panel">
+      <span class="sb-lbl">Revenue Share</span>
+      <span class="sb-val ora" id="sb-rs">$—</span>
+    </div>
+    <div class="sb-div"></div>
+    <div class="sb-panel">
+      <span class="sb-lbl">Standard Hourly</span>
+      <span class="sb-val amb" id="sb-hr">$—</span>
+    </div>
+    <div class="sb-div"></div>
+    <span class="sb-winner" id="sb-winner"></span>
+  </div>
+</div>
+
+<!-- HERO -->
+<div class="hero">
+  <p class="eyebrow">Event Profit Calculator</p>
+  <h1>What could your<br><em>next event</em> earn?</h1>
+  <p class="hero-sub">Put in your numbers. See exactly where the money goes — and what you walk away with.</p>
+  <div class="live-badge"><span class="pulse"></span> Live calculator — updates as you type</div>
+</div>
+
+<div class="wrap">
+
+  <!-- STEP 1 -->
+  <div class="card">
+    <div class="card-inner">
+      <div class="card-hd">
+        <span class="card-num">01 /</span>
+        <span class="card-title">Pick Your Space &amp; Time</span>
+        <div class="card-rule"></div>
+      </div>
+      <div class="room-grid">
+        <div class="room-card" onclick="pickRoom('cs',60,20,this)">
+          <div class="rm-name">Creative Suite</div>
+          <div class="rm-rate">$60<sub>/hr</sub></div>
+          <div class="rm-cap" id="cap-cs">⬡ Max 20 guests</div>
+          <div class="rm-desc">Intimate studio space<br>Workshops &amp; small gatherings</div>
+        </div>
+        <div class="room-card" onclick="pickRoom('loft',80,30,this)">
+          <div class="rm-name">The Loft</div>
+          <div class="rm-rate">$80<sub>/hr</sub></div>
+          <div class="rm-cap" id="cap-loft">⬡ Max 30 guests</div>
+          <div class="rm-desc">Open-concept creative floor<br>Panels, pop-ups &amp; mid-size events</div>
+        </div>
+        <div class="room-card" onclick="pickRoom('fh',150,60,this)">
+          <div class="rm-name">Full House</div>
+          <div class="rm-rate">$150<sub>/hr</sub></div>
+          <div class="rm-cap" id="cap-fh">⬡ Max 60 guests</div>
+          <div class="rm-desc">Full venue access<br>Large events, showcases &amp; productions</div>
+        </div>
+      </div>
+      <div class="cap-err" id="cap-err">⚠ Your expected attendance exceeds this room's capacity. Select a larger space or reduce your attendance.</div>
+      <div class="time-row">
+        <div class="ig"><label class="il">Event Start</label><input class="ih" type="time" id="t-start" value="19:00" oninput="calc()"></div>
+        <div class="ig"><label class="il">Event End</label><input class="ih" type="time" id="t-end" value="22:00" oninput="calc()"></div>
+        <div class="ig"><label class="il">Extra Setup (hrs)</label><input class="ih" type="number" id="t-setup" value="0" min="0" step="0.5" oninput="calc()"><span class="hint">30 min included free</span></div>
+        <div class="ig"><label class="il">Extra Breakdown (hrs)</label><input class="ih" type="number" id="t-bkdn" value="0" min="0" step="0.5" oninput="calc()"><span class="hint">30 min included free</span></div>
+      </div>
+      <div class="comped-note">⬡ &nbsp;<strong>30 min setup + 30 min breakdown always included.</strong> &nbsp;Additional time billed at room rate.</div>
+    </div>
+  </div>
+
+  <!-- STEP 2 -->
+  <div class="card">
+    <div class="card-inner">
+      <div class="card-hd">
+        <span class="card-num">02 /</span>
+        <span class="card-title">Membership Status</span>
+        <div class="card-rule"></div>
+      </div>
+      <div class="tog-row" onclick="toggleMember()">
+        <div class="tog-lbl">
+          <strong>I'm an Our House Member</strong>
+          <small>20% off Standard Hourly &nbsp;·&nbsp; No deposit on Revenue Share &nbsp;·&nbsp; Priority booking</small>
+        </div>
+        <div class="knob" id="knob"></div>
+      </div>
+      <div class="mem-note" id="mem-note">✓ &nbsp;Member discount applied. 20% off Standard Hourly. Revenue Share — no deposit required, split starts from dollar one.</div>
+      <p class="nonmem-note" id="nonmem-note">Not a member? <a href="#">Learn about membership →</a> &nbsp;|&nbsp; Non-members: <strong style="color:var(--cream)">30% deposit</strong> on Revenue Share &nbsp;·&nbsp; <strong style="color:var(--cream)">50% deposit</strong> on Standard Hourly.</p>
+    </div>
+  </div>
+
+  <!-- STEP 3 -->
+  <div class="card">
+    <div class="card-inner">
+      <div class="card-hd">
+        <span class="card-num">03 /</span>
+        <span class="card-title">Your Event Numbers</span>
+        <div class="card-rule"></div>
+      </div>
+      <div class="ev-grid">
+        <div class="ig">
+          <label class="il">Your Name</label>
+          <input class="ih" type="text" id="e-name" placeholder="e.g. Jordan" oninput="calc()">
+          <span class="hint">We'll personalize your results</span>
+        </div>
+        <div class="ig">
+          <label class="il">Ticket Price ($)</label>
+          <input class="ih" type="number" id="e-price" placeholder="30" min="0" step="1" oninput="calc()">
+          <span class="hint">Min. $30 for Revenue Share</span>
+        </div>
+        <div class="ig">
+          <label class="il">Expected Tickets Sold</label>
+          <input class="ih" type="number" id="e-tickets" placeholder="40" min="0" step="1" oninput="calc()">
+          <span class="hint">Max depends on room selected</span>
+        </div>
+      </div>
+      <div class="alert" id="a-price">⚠ Revenue Share requires a minimum ticket price of <strong>$30</strong>. Your current price only qualifies for Standard Hourly.</div>
+      <div class="alert" id="a-cap">⚠ Expected attendance exceeds this room's capacity of <strong id="a-cap-n">—</strong>. Reduce your number or choose a larger room.</div>
+    </div>
+  </div>
+
+  <!-- GREETING BAR -->
+  <div class="greeting-bar" id="greeting-bar">
+    <div class="greeting-top">
+      <div class="greeting-text" id="greeting-text"></div>
+      <div class="greeting-sub" id="greeting-sub"></div>
+    </div>
+  </div>
+
+  <!-- RESULTS -->
+  <div class="results" id="results">
+    <div class="live-row"><span class="pulse2">Updating live</span></div>
+    <div class="cmp">
+
+      <!-- REVENUE SHARE PANEL -->
+      <div class="panel rev" id="panel-rs">
+        <div class="winner-badge" id="wb-rs">★ Best for you</div>
+        <p class="p-eye">Option A</p>
+        <p class="p-title">Revenue Share</p>
+        <p class="take-lbl">Your Estimated Take-Home</p>
+        <p class="take-num" id="rs-take">$—</p>
+        <p class="take-note" id="rs-note">after Our House cap</p>
+
+        <!-- BREAKEVEN STAT -->
+        <div class="breakeven-stat" id="rs-be-stat">
+          <div class="be-num" id="rs-be-num">—</div>
+          <div class="be-right">
+            <span class="be-lbl" id="rs-be-lbl">Tickets to break even</span>
+            <span class="be-note" id="rs-be-note"></span>
+          </div>
+        </div>
+
+        <div class="bdown" id="rs-bdown"></div>
+        <div class="pcallout dep" id="rs-dep">
+          <p class="pcallout-t">30% Deposit Required (Non-Member)</p>
+          <span id="rs-dep-txt"></span>
+        </div>
+        <div class="pcallout mem" id="rs-mem">
+          <p class="pcallout-t">Member Benefit — No Deposit</p>
+          Split starts from dollar one. No money out of pocket before the event.
+        </div>
+      </div>
+
+      <!-- STANDARD HOURLY PANEL -->
+      <div class="panel hr" id="panel-hr">
+        <div class="winner-badge" id="wb-hr">★ Best for you</div>
+        <p class="p-eye">Option B</p>
+        <p class="p-title">Standard Hourly</p>
+        <p class="take-lbl">Your Estimated Take-Home</p>
+        <p class="take-num" id="hr-take">$—</p>
+        <p class="take-note" id="hr-note">after flat room fee</p>
+
+        <!-- BREAKEVEN STAT for Hourly -->
+        <div class="breakeven-stat" id="hr-be-stat">
+          <div class="be-num" id="hr-be-num">—</div>
+          <div class="be-right">
+            <span class="be-lbl">Tickets to cover room fee</span>
+            <span class="be-note" id="hr-be-note"></span>
+          </div>
+        </div>
+
+        <div class="bdown" id="hr-bdown"></div>
+        <div class="pcallout dep" id="hr-dep">
+          <p class="pcallout-t">Deposit Schedule</p>
+          <span id="hr-dep-txt"></span>
+        </div>
+        <div class="pcallout mem" id="hr-mem">
+          <p class="pcallout-t">Member Discount Applied</p>
+          <span id="hr-mem-txt"></span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- SCENARIO SLIDER -->
+    <div class="scenario-bar" id="scenario-bar">
+      <div class="sc-hd">
+        <span class="sc-title">⟳ &nbsp;What if I sell more?</span>
+        <span class="sc-val-display" id="sc-display">— tickets</span>
+      </div>
+      <div class="slider-wrap">
+        <input type="range" class="sc-slider" id="sc-slider" min="1" max="60" step="1" oninput="updateScenario(this.value)">
+        <div class="sc-ticks" id="sc-ticks"></div>
+      </div>
+      <div class="sc-cmp-mini">
+        <div class="sc-mini-panel rev">
+          <div class="sc-mini-lbl">Revenue Share</div>
+          <div class="sc-mini-val" id="sc-rs-val">$—</div>
+          <div class="sc-mini-note" id="sc-rs-note"></div>
+        </div>
+        <div class="sc-mini-panel hr">
+          <div class="sc-mini-lbl">Standard Hourly</div>
+          <div class="sc-mini-val" id="sc-hr-val">$—</div>
+          <div class="sc-mini-note" id="sc-hr-note"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="alert" id="a-neg" style="margin-top:3px;">⚠ At these numbers, ticket sales don't cover Our House's cap. You'd be operating at a loss on Revenue Share. Increase your ticket price or expected attendance.</div>
+  </div>
+
+  <!-- EMAIL CAPTURE + CTA -->
+  <div class="cta-wrap" id="cta-wrap">
+    <div class="cta-inner">
+      <div class="cta-layout">
+
+        <div class="cta-left">
+          <p class="e-eye">Ready to make it official?</p>
+          <p class="cta-title" id="cta-title">Get your full breakdown<br>sent to you.</p>
+          <p class="cta-sub" id="cta-sub">We'll email your personalized numbers + next steps. No spam — just your event math and how to book.</p>
+          <div id="email-gate">
+            <div class="e-form">
+              <input type="email" class="e-in" id="e-email" placeholder="your@email.com">
+              <div class="e-btn-row">
+                <button class="e-btn" id="e-submit-btn" onclick="submitEmail()">Download My Breakdown</button>
+                <a class="book-btn" id="book-btn" href="https://poweredbymuse.github.io/ourhouseeventrequest/" target="_blank">Submit Event Request →</a>
+              </div>
+            </div>
+            <p class="e-disc">By submitting you agree to be contacted by Our House / POWEREDBYMUSE. No spam, ever.</p>
+          </div>
+          <div class="e-conf" id="e-conf">
+            ✓ &nbsp;<strong>You're on the list.</strong> Check your inbox — your breakdown is on its way.<br>
+            <span style="opacity:.7">We'll follow up about booking your date.</span>
+          </div>
+        </div>
+
+        <div class="cta-right">
+          <div class="checklist-card locked" id="checklist-card" onclick="downloadChecklist()">
+            <div class="ck-eyebrow">Free Download</div>
+            <div class="ck-title">The Guaranteed Acceptance Checklist</div>
+            <div class="ck-desc">Everything Our House looks for in a booking — our standards, what we need from producers, and exactly how to structure your collaborator agreements for a yes.</div>
+            <div class="ck-lock" id="ck-lock">🔒 &nbsp;Submit your email to unlock</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="footer">
+  <p class="footer-logo">Our House · POWEREDBYMUSE</p>
+  <div class="footer-line"></div>
+</div>
+
+<script>
+const MIN_RS_PRICE=30, OH_SPLIT=0.60, ADMIN_FEE=0.20, RS_DEP_NM=0.30, HR_DEP=0.50, MEM_DISC=0.20;
+const S = { roomKey:null, roomRate:0, roomCap:0, isMember:false };
+let emailSubmitted = false;
+let lastCalc = {};
+
+const $  = id => document.getElementById(id);
+const fmtD = n => '$'+Number(n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+const fmtD0 = n => '$'+Math.round(n).toLocaleString('en-US');
+const show = (id,yes) => $(id).classList.toggle('show',yes);
+const parseTime = s => { if(!s) return null; const[h,m]=s.split(':').map(Number); return h+m/60; };
+const brow = (lbl,val,cls='') => `<div class="brow"><span class="blbl">${lbl}</span><span class="bval ${cls}">${val}</span></div>`;
+const firstName = () => ($('e-name').value||'').trim().split(' ')[0];
+
+function pickRoom(key,rate,cap,el){
+  document.querySelectorAll('.room-card').forEach(c=>c.classList.remove('sel'));
+  el.classList.add('sel');
+  S.roomKey=key; S.roomRate=rate; S.roomCap=cap;
+  calc();
+}
+
+function toggleMember(){
+  S.isMember=!S.isMember;
+  $('knob').classList.toggle('on',S.isMember);
+  show('mem-note',S.isMember);
+  $('nonmem-note').style.display=S.isMember?'none':'block';
+  calc();
+}
+
+function refreshCapBadges(t){
+  ['cs','loft','fh'].forEach(k=>{
+    const caps={cs:20,loft:30,fh:60};
+    const b=$('cap-'+k);
+    if(b) b.classList.toggle('over', S.roomKey===k&&t>caps[k]&&t>0);
+  });
+}
+
+function calc(){
+  const name    = firstName();
+  const price   = parseFloat($('e-price').value);
+  const tickets = parseFloat($('e-tickets').value);
+  const startH  = parseTime($('t-start').value);
+  const endH    = parseTime($('t-end').value);
+  const xSetup  = parseFloat($('t-setup').value)||0;
+  const xBkdn   = parseFloat($('t-bkdn').value)||0;
+
+  const hasRoom  = !!S.roomKey;
+  const hasNums  = !isNaN(price)&&!isNaN(tickets)&&price>0&&tickets>0;
+  const overCap  = hasRoom&&hasNums&&tickets>S.roomCap;
+  const underPrice = hasNums&&price<MIN_RS_PRICE;
+
+  refreshCapBadges(hasNums?tickets:0);
+  show('cap-err', overCap&&hasRoom&&hasNums);
+  show('a-cap', overCap); if(S.roomCap) $('a-cap-n').textContent=S.roomCap;
+  show('a-price', underPrice&&hasNums);
+
+  if(!hasRoom||!hasNums||startH===null||endH===null||overCap){
+    show('results',false); show('cta-wrap',false);
+    show('a-neg',false); show('greeting-bar',false); show('sticky-bar',false);
+    show('scenario-bar',false);
+    return;
+  }
+
+  // ── Core math ──────────────────────────────────────────────────
+  let evtHrs = endH-startH; if(evtHrs<=0) evtHrs+=24;
+  const billable = evtHrs + Math.max(0,xSetup) + Math.max(0,xBkdn);
+  const stdRoomCost = billable * S.roomRate;
+  const adminAmt    = stdRoomCost * ADMIN_FEE;
+  const houseCap    = stdRoomCost + adminAmt;
+  const memRate     = S.roomRate * (1-MEM_DISC);
+  const hrRoomCost  = S.isMember ? billable*memRate : stdRoomCost;
+  const gross       = price * tickets;
+
+  // Revenue Share
+  const rsElig     = price >= MIN_RS_PRICE;
+  const rsDepAmt   = houseCap * RS_DEP_NM;  // deposit = 30% of cap, paid upfront
+  // OH is owed min(gross*60%, cap). Deposit already paid counts toward that.
+  // OH collects from event: max(0, ohOwed - deposit). If gross is tiny, OH keeps deposit and pays out gross.
+  const ohOwed     = rsElig ? Math.min(gross*OH_SPLIT, houseCap) : 0;
+  const ohTake     = ohOwed;  // total OH receives including deposit credit
+  const ohFromEvent = rsElig ? Math.max(0, ohOwed - rsDepAmt) : 0;  // what OH collects at the event
+  const capHit     = rsElig && ohOwed >= houseCap;
+  // Producer receives: gross minus what OH collects from the event
+  const rsTake  = rsElig ? gross - ohFromEvent : null;  // cash producer gets back at event
+  // Producer net = cash received back minus deposit already paid
+  const rsNet   = rsElig&&!S.isMember ? rsTake - rsDepAmt : rsTake;
+  // Breakeven for non-members: deposit is at risk. They break even when rsNet >= 0
+  // rsNet = gross - max(0, ohOwed - dep) - dep
+  // At low gross: ohOwed = gross*0.6, ohFromEvent = 0 (dep > ohOwed), rsTake = gross, rsNet = gross - dep
+  // rsNet >= 0 when gross >= dep => breakeven = ceil(dep / price)
+  // At high gross: ohOwed > dep, ohFromEvent = ohOwed - dep, rsTake = gross - ohOwed + dep, rsNet = gross - ohOwed
+  // These are two different regimes; find which applies
+  const depBreakeven = rsElig&&!S.isMember ? Math.ceil(rsDepAmt / price) : null;
+  // Cap breakeven: tickets to hit house cap (OH takes full cap, producer gets all above)
+  const breakeven  = rsElig ? Math.ceil(houseCap / (price*OH_SPLIT)) : null;
+  const rsNeg   = rsElig && rsNet !== null && rsNet < 0;
+
+  // Standard Hourly
+  const hrTake     = gross - hrRoomCost;
+  const hrDepAmt   = hrRoomCost * HR_DEP;
+  const hrRemaining = hrRoomCost - hrDepAmt;
+  const hrBreakeven = Math.ceil(hrRoomCost / price);
+
+  // Store for scenario slider
+  lastCalc = { price, tickets, houseCap, hrRoomCost, rsElig, breakeven, depBreakeven, hrBreakeven,
+               gross, ohTake, ohOwed, ohFromEvent, rsTake, rsNet, hrTake, rsNeg, capHit, memRate, stdRoomCost,
+               rsDepAmt, hrDepAmt, hrRemaining, billable };
+
+  // ── Greeting bar ──────────────────────────────────────────────
+  if(name){
+    $('greeting-text').innerHTML = `Here's your breakdown, <em>${name}.</em>`;
+    $('greeting-sub').textContent = `${tickets} tickets · ${fmtD(price)} each · ${fmtD(gross)} gross`;
+
+    show('greeting-bar',true);
+  } else {
+    show('greeting-bar',false);
+  }
+
+  // ── RS Panel ──────────────────────────────────────────────────
+  if(!rsElig){
+    $('rs-take').textContent='—';
+    $('rs-note').textContent='Minimum $30 ticket price required';
+    $('rs-bdown').innerHTML = brow('Min ticket price','$30 required','warn')+brow('Your price',fmtD(price),'warn');
+    show('rs-be-stat',false);
+  } else {
+    const displayTake = S.isMember ? rsTake : rsNet;
+    $('rs-take').textContent = fmtD(displayTake);
+    $('rs-note').textContent = capHit
+      ? `Our House capped at ${fmtD(houseCap)}`
+      : `Our House: ${fmtD(ohTake)} (cap not reached)`;
+
+    // ── Breakeven stat ─────────────────────────────────────────
+    show('rs-be-stat', true);
+    if(S.isMember){
+      // Members: split starts at $1, so breakeven = 1 ticket
+      $('rs-be-num').textContent = '1';
+      $('rs-be-lbl').textContent = 'Breakeven ticket';
+      $('rs-be-note').textContent = 'Members break even from the first ticket sold — no deposit required. Your 40% share starts immediately.';
+    } else {
+      // Non-members: break even once 40% share covers the deposit
+      $('rs-be-num').textContent = depBreakeven;
+      $('rs-be-lbl').textContent = 'Tickets to cover deposit';
+      const beLabel = tickets >= depBreakeven
+        ? `You've covered your deposit at ${depBreakeven} tickets. You're in profit.`
+        : `You need ${depBreakeven - tickets} more ticket${depBreakeven-tickets!==1?'s':''} before your 40% covers the deposit — below this you operate at a loss.`;
+      $('rs-be-note').textContent = beLabel;
+    }
+
+    // ── Line-item breakdown ────────────────────────────────────
+    let h='';
+    h += brow('Total Ticket Sales (Gross)', fmtD(gross));
+    h += `<div class="brow-sub">${tickets} tickets × ${fmtD(price)}</div>`;
+
+    h += brow(`Our House takes (60%${capHit?' — capped':''})`, fmtD(ohTake), 'dim');
+    h += `<div class="brow-sub">House Cap = room cost ${fmtD(stdRoomCost)} + 20% admin ${fmtD(adminAmt)} = <strong>${fmtD(houseCap)}</strong> max. Our House never takes more than the cap, even if 60% of sales exceeds it.</div>`;
+
+    h += brow('Your Gross Share (40%)', fmtD(rsTake), rsTake < (S.isMember ? 0 : rsDepAmt) ? 'warn' : 'ora');
+
+    if(!S.isMember){
+      h += brow('Deposit Paid Upfront (30% of cap)', fmtD(rsDepAmt), 'warn');
+      h += `<div class="brow-sub">Paid before your event. Our House collects <strong>${fmtD(ohFromEvent)}</strong> from event proceeds (deposit already covered ${fmtD(Math.min(rsDepAmt,ohOwed))} of the ${fmtD(ohOwed)} owed).</div>`;
+      h += brow('You Receive at Event', fmtD(rsTake), rsTake>=0?'':'warn');
+      h += brow('Minus Deposit Already Paid', '−'+fmtD(rsDepAmt), 'warn');
+      h += brow('Your Net Take-Home', fmtD(rsNet), rsNet >= 0 ? 'ora' : 'warn');
+      if(rsNet < 0){
+        h += `<div class="brow-sub" style="color:#e07a5f;">⚠ At ${tickets} tickets, you net ${fmtD(rsNet)}. You need at least <strong>${depBreakeven} tickets</strong> to break even (cover the deposit).</div>`;
+      }
+    } else {
+      h += brow('Deposit', '$0.00 — Member Benefit', 'amb');
+      h += `<div class="brow-sub">No deposit required. Your 40% split starts from the very first dollar of ticket sales.</div>`;
+      h += brow('Your Net Take-Home', fmtD(rsTake), rsTake >= 0 ? 'ora' : 'warn');
+    }
+    $('rs-bdown').innerHTML = h;
+  }
+
+  show('rs-dep', !S.isMember&&rsElig);
+  if(!S.isMember&&rsElig){
+    $('rs-dep-txt').innerHTML = `<strong>${fmtD(rsDepAmt)}</strong> is due before your event (30% of the ${fmtD(houseCap)} house cap). `
+      + `At the event, Our House collects <strong>${fmtD(ohFromEvent)}</strong> from ticket sales (your deposit already covered the rest of what Our House is owed). `
+      + `You receive <strong>${fmtD(rsTake)}</strong> from the event, minus your <strong>${fmtD(rsDepAmt)}</strong> deposit = `
+      + (rsNet >= 0
+          ? `net take-home of <strong>${fmtD(rsNet)}</strong>.`
+          : `<strong style="color:#e07a5f;">${fmtD(rsNet)} — you are at a loss.</strong> You need at least <strong>${depBreakeven} tickets</strong> to break even.`);
+  }
+
+  show('rs-mem', S.isMember&&rsElig);
+
+  // ── HR Panel ──────────────────────────────────────────────────
+  $('hr-take').textContent = fmtD(hrTake);
+  $('hr-note').textContent = `Room fee: ${fmtD(hrRoomCost)} · Keep 100% of sales`;
+
+  show('hr-be-stat', true);
+  $('hr-be-num').textContent = hrBreakeven;
+  $('hr-be-note').textContent = hrTake >= 0
+    ? `You're above breakeven by ${tickets - hrBreakeven} ticket${tickets-hrBreakeven!==1?'s':''}.`
+    : `Sell ${hrBreakeven - tickets} more ticket${hrBreakeven-tickets!==1?'s':''} to cover the room fee.`;
+
+  let hh='';
+  hh += brow('Total Ticket Sales (Gross)', fmtD(gross));
+  hh += `<div class="brow-sub">${tickets} tickets × ${fmtD(price)}</div>`;
+  if(S.isMember) hh += brow('Member Discount (20% off room rate)', `−${fmtD(stdRoomCost*MEM_DISC)}`, 'amb');
+  hh += brow(`Room Fee (${billable.toFixed(1)} hrs × $${S.isMember?memRate.toFixed(0):S.roomRate}/hr)`, fmtD(hrRoomCost), 'dim');
+  hh += `<div class="brow-sub">You keep 100% of ticket sales. Room fee is the only cost.</div>`;
+  hh += brow('Your Take-Home', fmtD(hrTake), hrTake>=0?'amb':'warn');
+  hh += brow('Deposit (50% of room fee)', fmtD(hrDepAmt), 'warn');
+  hh += `<div class="brow-sub">Due upfront to confirm your booking. Remaining ${fmtD(hrRemaining)} due 24 hrs before event. Both applied to your total room fee — not an extra charge.</div>`;
+  $('hr-bdown').innerHTML = hh;
+
+  show('hr-dep',true);
+  $('hr-dep-txt').innerHTML = `50% deposit of <strong>${fmtD(hrDepAmt)}</strong> is due to confirm your booking. `
+    + `The remaining <strong>${fmtD(hrRemaining)}</strong> is due <strong>24 hours before your event.</strong> `
+    + `Both amounts are applied toward your total room fee of ${fmtD(hrRoomCost)} — not an extra charge.`;
+  show('hr-mem', S.isMember);
+  $('hr-mem-txt').textContent = `Your rate is $${memRate.toFixed(0)}/hr (standard $${S.roomRate}/hr), saving ${fmtD(stdRoomCost*MEM_DISC)}.`;
+
+  show('a-neg', rsNeg&&rsElig);
+
+  // ── Winner badges ─────────────────────────────────────────────
+  const rsDisplay = S.isMember ? rsTake : (rsNet||0);
+  const rsWins = rsElig&&!rsNeg&&rsDisplay>(hrTake);
+  const hrWins = hrTake > (rsDisplay||0) || !rsElig || rsNeg;
+  const isTie  = rsElig&&!rsNeg&&Math.abs(rsDisplay-hrTake)<1;
+  show('wb-rs', rsWins&&!isTie);
+  show('wb-hr', hrWins&&!isTie);
+  $('panel-rs').classList.toggle('winner', rsWins&&!isTie);
+  $('panel-hr').classList.toggle('winner', hrWins&&!isTie);
+
+  // ── Sticky bar ────────────────────────────────────────────────
+  $('sb-rs').textContent = rsElig ? fmtD0(S.isMember?rsTake:rsNet) : '—';
+  $('sb-hr').textContent = fmtD0(hrTake);
+  const sbWin = $('sb-winner');
+  if(isTie){ sbWin.textContent='Tie'; sbWin.className='sb-winner tie'; }
+  else if(rsWins){ sbWin.textContent='Rev Share wins'; sbWin.className='sb-winner rs'; }
+  else { sbWin.textContent='Hourly wins'; sbWin.className='sb-winner hr'; }
+  show('sticky-bar',true);
+
+  // ── Scenario slider ───────────────────────────────────────────
+  const maxSlide = S.roomCap;
+  const slider = $('sc-slider');
+  slider.max = maxSlide;
+  slider.min = 1;
+  slider.value = tickets;
+  buildSliderTicks(maxSlide);
+  updateScenario(tickets, true);
+  show('scenario-bar',true);
+
+  show('results',true);
+
+  // ── CTA ───────────────────────────────────────────────────────
+  if(name){
+    $('cta-title').innerHTML = `${name}, let's make this happen.`;
+    $('cta-sub').textContent = `Your numbers look solid. Drop your email and we'll send your personalized breakdown + everything you need to book your date at Our House.`;
+  } else {
+    $('cta-title').innerHTML = `Get your full breakdown sent to you.`;
+    $('cta-sub').textContent = `We'll email your personalized numbers + next steps. No spam — just your event math and how to book.`;
+  }
+  show('cta-wrap',true);
+}
+
+// ── Scenario slider ──────────────────────────────────────────────
+function buildSliderTicks(max){
+  const ticks = $('sc-ticks');
+  const steps = [1, Math.round(max*0.25), Math.round(max*0.5), Math.round(max*0.75), max];
+  ticks.innerHTML = steps.map(v=>`<span class="sc-tick">${v}</span>`).join('');
+}
+
+function updateScenario(val, silent){
+  const t = parseInt(val);
+  if(!lastCalc.price) return;
+  const { price, houseCap, hrRoomCost, rsElig, rsDepAmt } = lastCalc;
+  const gross = price * t;
+  const ohOwedSc = rsElig ? Math.min(gross*OH_SPLIT, houseCap) : 0;
+  const ohFromEventSc = rsElig ? Math.max(0, ohOwedSc - rsDepAmt) : 0;
+  const rsTake = rsElig ? gross - ohFromEventSc : null;
+  const rsNet  = rsElig&&!S.isMember ? rsTake - rsDepAmt : rsTake;
+  const rsDisplay = S.isMember ? rsTake : rsNet;
+  const hrTake = gross - hrRoomCost;
+
+  $('sc-display').innerHTML = `<em>${t}</em> ticket${t!==1?'s':''}`;
+  $('sc-slider').value = t;
+
+  $('sc-rs-val').textContent = rsElig ? fmtD0(rsDisplay) : '—';
+  $('sc-hr-val').textContent = fmtD0(hrTake);
+
+  const rsNote = rsElig
+    ? (rsDisplay>=0 ? `+${fmtD0(rsDisplay)} net` : `${fmtD0(rsDisplay)} (at a loss)`)
+    : 'Min $30 ticket required';
+  const hrNote = hrTake>=0 ? `+${fmtD0(hrTake)} net` : `${fmtD0(hrTake)} (below breakeven)`;
+  $('sc-rs-note').textContent = rsNote;
+  $('sc-hr-note').textContent = hrNote;
+}
+
+// ── Email submit ─────────────────────────────────────────────────
+async function submitEmail(){
+  const emailVal = $('e-email').value.trim();
+  const nameVal  = $('e-name').value.trim();
+  if(!emailVal||!emailVal.includes('@')){ $('e-email').style.borderColor='rgba(192,57,43,.6)'; return; }
+  if(!lastCalc.price){ alert("Run your numbers first before requesting your breakdown."); return; }
+  $('e-email').style.borderColor='';
+
+  const btn  = $('e-submit-btn');
+  btn.disabled    = true;
+  btn.textContent = 'Loading...';
+
+  const MAKE_WEBHOOK = 'https://hook.us2.make.com/s5flntriylytkb7yqepud88hiy7jqjel';
+  const name = nameVal || 'Producer';
+  const lc   = lastCalc;
+  const room = S.roomKey ? {'cs':'Creative Suite','loft':'The Loft','fh':'Full House'}[S.roomKey] : '';
+
+  // POST name + email + calc data to Make (fire and forget)
+  try {
+    fetch(MAKE_WEBHOOK, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name,
+        email:         emailVal,
+        room,
+        room_rate:     S.roomRate||0,
+        is_member:     S.isMember ? 'Yes' : 'No',
+        model:         lc.rsElig ? 'Revenue Share' : 'Standard Hourly',
+        ticket_price:  lc.price||0,
+        tickets:       lc.tickets||0,
+        gross_revenue: lc.gross||0,
+        house_cap:     lc.houseCap||0,
+        rs_deposit:    lc.rsDepAmt||0,
+        rs_take:       lc.rsTake||0,
+        hr_room_cost:  lc.hrRoomCost||0,
+        hr_deposit:    lc.hrDepAmt||0,
+        hr_take:       lc.hrTake||0,
+        billable_hrs:  lc.billable||0,
+        breakeven:     lc.breakeven||0,
+        hr_breakeven:  lc.hrBreakeven||0,
+        submitted_at:  new Date().toISOString(),
+        source:        'calculator'
+      })
+    });
+  } catch(e){ console.warn('Webhook error:', e); }
+
+  // Load jsPDF and trigger immediate browser download
+  if(!window.jspdf){
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+    s.onload = () => triggerDownload(name);
+    s.onerror = () => {
+      btn.disabled = false;
+      btn.textContent = 'Download My Breakdown';
+      alert('Download unavailable. Please check your connection and try again.');
+    };
+    document.head.appendChild(s);
+  } else {
+    triggerDownload(name);
+  }
+}
+
+function triggerDownload(name){
+  const btn = $('e-submit-btn');
+  try {
+    const pdfB64  = buildBreakdownPDF(name);
+    const pdfName = (name.replace(/[^a-z0-9]/gi,'_')||'Producer')+'_OurHouse_Breakdown.pdf';
+    const link    = document.createElement('a');
+    link.href     = 'data:application/pdf;base64,'+pdfB64;
+    link.download = pdfName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    // Success state
+    emailSubmitted = true;
+    $('checklist-card').classList.remove('locked');
+    $('ck-lock').textContent = 'Click to download your free checklist';
+    show('e-conf', true);
+    $('e-email').disabled = true;
+    btn.textContent = 'Downloaded';
+    const first = name.split(' ')[0];
+    $('e-conf').innerHTML = 'Your breakdown is downloading now, <strong>'+first+'</strong>. Keep an eye on your inbox -- more from us is on the way.';
+  } catch(err){
+    console.error('PDF error:', err);
+    btn.disabled = false;
+    btn.textContent = 'Download My Breakdown';
+    alert('Something went wrong. Please email info@ourhouse48th.com.');
+  }
+}
+
+function buildBreakdownPDF(name, email){
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation:"portrait", unit:"pt", format:"letter" });
+  const PW=612, PH=792;
+  const FOREST=[12,55,34], ORANGE=[228,97,20], AMBER=[220,149,27];
+  const CREAM=[245,244,239], CREAM_D=[228,226,219], INK=[28,28,26], MUTED=[107,117,101];
+  const WHITE=[255,255,255], WARN=[192,57,43], GRN=[46,125,82], GRN_L=[238,246,241];
+  const AMBER_L=[253,246,227];
+  let page=1;
+  const lc = lastCalc;
+  const room = S.roomKey ? {'cs':'Creative Suite','loft':'The Loft','fh':'Full House'}[S.roomKey] : 'Not selected';
+  const isRS = lc.rsElig;
+  const mon  = n => n==null ? '--' : '$'+Math.round(n).toLocaleString();
+
+  const rgb  = c => doc.setTextColor(c[0],c[1],c[2]);
+  const fill = c => doc.setFillColor(c[0],c[1],c[2]);
+  const drw  = c => doc.setDrawColor(c[0],c[1],c[2]);
+
+  function chrome(){
+    fill(CREAM); doc.rect(0,0,PW,PH,"F");
+    fill(FOREST); doc.rect(0,0,PW,76,"F");
+    fill(ORANGE); doc.rect(0,76,PW,2.5,"F");
+    rgb([122,170,136]); doc.setFont("helvetica","bold"); doc.setFontSize(8);
+    doc.text("OUR HOUSE  |  POWEREDBYMUSE", 36, 28);
+    doc.setFont("helvetica","normal"); doc.setFontSize(7);
+    doc.text("South LA Creative Community Infrastructure", 36, 42);
+    doc.text("Event Profit Breakdown", 36, 56);
+    doc.text("ourhouse48th.com", PW-36, 28, {align:"right"});
+    doc.text("info@ourhouse48th.com", PW-36, 42, {align:"right"});
+    fill(ORANGE); doc.rect(0,78.5,3.5,PH-112,"F");
+    fill(CREAM_D); doc.rect(0,PH-32,PW,32,"F");
+    fill(ORANGE); doc.rect(0,PH-32,PW,1.5,"F");
+    rgb(MUTED); doc.setFont("helvetica","normal"); doc.setFontSize(6.5);
+    doc.text("Our House  |  POWEREDBYMUSE  |  info@ourhouse48th.com  |  South LA", 36, PH-11);
+    doc.text("Page "+page, PW-36, PH-11, {align:"right"});
+  }
+
+  function secHdr(y, num, title){
+    fill(CREAM_D); doc.rect(18,y,PW-36,22,"F");
+    fill(ORANGE); doc.rect(18,y,1.5,22,"F");
+    rgb(ORANGE); doc.setFont("helvetica","bold"); doc.setFontSize(7.5);
+    doc.text(num, 26, y+14.5);
+    rgb(FOREST); doc.setFontSize(8);
+    doc.text(title.toUpperCase(), 52, y+14.5);
+    return y+30;
+  }
+
+  function np(y,need){ if(y+need>PH-44){ doc.addPage(); page++; chrome(); return 102; } return y; }
+
+  function kvTbl(y, rows){
+    const cw1=140, rh=24;
+    rows.forEach((row,ri)=>{
+      fill(ri%2===0?WHITE:CREAM); doc.rect(18,y,PW-36,rh,"F");
+      rgb(FOREST); doc.setFont("helvetica","bold"); doc.setFontSize(8.5);
+      doc.text(row[0], 26, y+16);
+      rgb(INK); doc.setFont("helvetica","normal"); doc.setFontSize(8.5);
+      const vl=doc.splitTextToSize(row[1],PW-36-cw1-16);
+      doc.text(vl, 26+cw1, y+16);
+      y += vl.length>1 ? rh+(vl.length-1)*12 : rh;
+    });
+    drw(CREAM_D); doc.setLineWidth(0.5);
+    return y+8;
+  }
+
+  function metricCard(x, y, w, h, label, value, sub, vc){
+    fill(CREAM_D); doc.rect(x,y,w,h,"F");
+    rgb(MUTED); doc.setFont("helvetica","bold"); doc.setFontSize(6.5);
+    doc.text(label.toUpperCase(), x+12, y+14);
+    rgb(vc||INK); doc.setFont("helvetica","bold"); doc.setFontSize(18);
+    doc.text(value, x+12, y+36);
+    rgb(MUTED); doc.setFont("helvetica","normal"); doc.setFontSize(7.5);
+    const sl=doc.splitTextToSize(sub,w-20); doc.text(sl,x+12,y+50);
+  }
+
+  function plTbl(y, rows){
+    const cols=[200,90,PW-36-290], rh=26;
+    fill(FOREST); doc.rect(18,y,PW-36,rh,"F");
+    rgb(WHITE); doc.setFont("helvetica","bold"); doc.setFontSize(7.5);
+    doc.text("LINE ITEM",26,y+17); doc.text("AMOUNT",26+cols[0],y+17); doc.text("NOTES",26+cols[0]+cols[1],y+17);
+    y+=rh;
+    rows.forEach((row,ri)=>{
+      const isNet=row[0].includes("Net");
+      fill(isNet?GRN_L:(ri%2===0?WHITE:CREAM)); doc.rect(18,y,PW-36,rh,"F");
+      rgb(isNet?GRN:FOREST); doc.setFont("helvetica",isNet?"bold":"bold"); doc.setFontSize(8.5);
+      doc.text(row[0],26,y+17);
+      const isMinus=row[1].startsWith("-");
+      rgb(isNet?GRN:isMinus?WARN:INK); doc.setFont("helvetica",isNet?"bold":"normal"); doc.setFontSize(8.5);
+      doc.text(row[1],26+cols[0],y+17);
+      rgb(MUTED); doc.setFont("helvetica","normal"); doc.setFontSize(7.5);
+      const nl=doc.splitTextToSize(row[2],cols[2]-12); doc.text(nl,26+cols[0]+cols[1],y+17);
+      y+=rh;
+    });
+    drw(CREAM_D); doc.setLineWidth(0.5); doc.rect(18,y-rh*rows.length-rh,PW-36,rh*(rows.length+1),"S");
+    return y+8;
+  }
+
+  function schedTbl(y, rows){
+    const cols=[160,100,PW-36-260], rh=26;
+    fill(FOREST); doc.rect(18,y,PW-36,rh,"F");
+    rgb(WHITE); doc.setFont("helvetica","bold"); doc.setFontSize(7.5);
+    doc.text("WHEN",26,y+17); doc.text("AMOUNT",26+cols[0],y+17); doc.text("NOTES",26+cols[0]+cols[1],y+17);
+    y+=rh;
+    rows.forEach((row,ri)=>{
+      fill(ri%2===0?WHITE:CREAM); doc.rect(18,y,PW-36,rh,"F");
+      rgb(FOREST); doc.setFont("helvetica","bold"); doc.setFontSize(8.5); doc.text(row[0],26,y+17);
+      const isG=row[1]==="Waived"||row[1].includes("100%");
+      rgb(isG?GRN:ORANGE); doc.setFont("helvetica","bold"); doc.setFontSize(9); doc.text(row[1],26+cols[0],y+17);
+      rgb(INK); doc.setFont("helvetica","normal"); doc.setFontSize(8);
+      const nl=doc.splitTextToSize(row[2],cols[2]-12); doc.text(nl,26+cols[0]+cols[1],y+17);
+      y+=rh;
+    });
+    drw(CREAM_D); doc.setLineWidth(0.5); doc.rect(18,y-rh*rows.length-rh,PW-36,rh*(rows.length+1),"S");
+    return y+8;
+  }
+
+  // -- Content ----------------------------------------------------
+  chrome();
+  let y=102;
+
+  // Title
+  rgb(FOREST); doc.setFont("helvetica","bold"); doc.setFontSize(22);
+  doc.text("Event Profit Breakdown", 18, y); y+=28;
+  rgb(MUTED); doc.setFont("helvetica","italic"); doc.setFontSize(10);
+  doc.text("Prepared for "+name, 18, y); y+=14;
+  fill(ORANGE); doc.rect(18,y,PW-36,2,"F"); y+=12;
+
+  // 01 Summary
+  y=np(y,80); y=secHdr(y,"01 /","Your Booking Summary");
+  y=kvTbl(y,[
+    ["Room",          room+"  .  $"+S.roomRate+"/hr"],
+    ["Membership",    S.isMember?"Member - benefits applied":"Non-Member"],
+    ["Billable Hrs",  lc.billable.toFixed(1)+" hrs"],
+    ["Ticket Price",  mon(lc.price)+" per ticket"],
+    ["Est. Tickets",  lc.tickets+" tickets"],
+    ["Gross Revenue", mon(lc.gross)],
+  ]);
+
+  // 02 Metrics
+  y=np(y,100); y=secHdr(y,"02 /","Your Numbers at a Glance");
+  const cw=(PW-36)/3, ch=76;
+  if(isRS){
+    const dep = S.isMember ? 0 : lc.rsDepAmt;
+    metricCard(18,      y, cw-3, ch, "Deposit Due",
+      S.isMember?"Waived":mon(dep),
+      S.isMember?"Member benefit - no deposit required":"30% of house cap . due within 48 hrs",
+      S.isMember?GRN:ORANGE);
+    metricCard(18+cw,   y, cw-3, ch, "Our House Cap",
+      mon(lc.houseCap),
+      "Room x hrs x 1.20 admin fee",
+      FOREST);
+    metricCard(18+cw*2, y, cw-3, ch, "Your Est. Take",
+      mon(lc.rsTake),
+      lc.tickets+" tickets x "+mon(lc.price)+" x 40%",
+      GRN);
+  } else {
+    metricCard(18,      y, cw-3, ch, "Total Room Fee",
+      mon(lc.hrRoomCost),
+      lc.billable.toFixed(1)+" hrs x $"+(S.isMember?Math.round(lc.memRate):S.roomRate)+"/hr"+(S.isMember?" (member rate)":""),
+      FOREST);
+    metricCard(18+cw,   y, cw-3, ch, "Deposit Due",
+      mon(lc.hrDepAmt),
+      "50% . due within 48 hrs of acceptance",
+      ORANGE);
+    metricCard(18+cw*2, y, cw-3, ch, "Your Net Take",
+      mon(lc.hrTake),
+      "Ticket revenue above room cost",
+      lc.hrTake>=0?GRN:WARN);
+  }
+  y+=ch+10;
+
+  // 03 P&L
+  y=np(y,160); y=secHdr(y,"03 /","Full P&L Projection");
+  let plRows;
+  if(isRS){
+    const dep = S.isMember ? 0 : lc.rsDepAmt;
+    plRows=[
+      ["Gross Ticket Revenue",  mon(lc.gross),           lc.tickets+" tickets x "+mon(lc.price)],
+      ["Our House Cap (60%)",   mon(lc.houseCap),        "Room fee x hrs x 1.20 admin"],
+      ["Your Gross Take (40%)", mon(lc.rsTake),          "40% of gross ticket revenue"],
+      ["Less: Deposit",         S.isMember?"Waived":"-"+mon(dep), "Applied at payout . non-refundable"],
+      ["Your Net Take-Home",    mon(S.isMember?lc.rsTake:lc.rsNet), "After deposit settled"],
+      ["Breakeven",             (lc.breakeven||0)+" tickets", "Tickets to hit house cap"],
+    ];
+  } else {
+    plRows=[
+      ["Gross Ticket Revenue", mon(lc.gross),         lc.tickets+" tickets x "+mon(lc.price)],
+      ["Total Room Fee",       "-"+mon(lc.hrRoomCost),"Room fee . 100% of ticket sales above this is yours"],
+      ["Your Net Take-Home",   mon(lc.hrTake),        lc.hrTake>=0?"Profit above room cost":"You need more tickets"],
+      ["Deposit (50%)",        mon(lc.hrDepAmt),      "Due within 48 hrs of acceptance"],
+      ["Remaining Balance",    mon(lc.hrRemaining),   "Due 24 hrs before event"],
+      ["Breakeven",            (lc.hrBreakeven||0)+" tickets","Tickets to cover full room fee"],
+    ];
+  }
+  y=plTbl(y, plRows);
+
+  // 04 Payment Schedule
+  y=np(y,120); y=secHdr(y,"04 /","Deposit + Payment Schedule");
+  let schedRows;
+  if(isRS){
+    const dep=S.isMember?0:lc.rsDepAmt;
+    schedRows=[
+      ["At acceptance (within 48 hrs)", S.isMember?"Waived":mon(dep), "Zelle, Cash App, or Venmo"],
+      ["After the event (5-7 days)","Payout processed","40% of ticket sales, deposit applied"],
+    ];
+  } else {
+    schedRows=[
+      ["At acceptance (within 48 hrs)", mon(lc.hrDepAmt),    "50% deposit . Zelle, Cash App, or Venmo"],
+      ["24 hrs before event",           mon(lc.hrRemaining), "Remaining 50% of room fee"],
+      ["After event",                   "Keep 100%",         "All ticket revenue is yours directly"],
+    ];
+  }
+  y=schedTbl(y, schedRows);
+
+  // 05 Next Steps
+  y=np(y,80); y=secHdr(y,"05 /","Ready to Book?");
+  y=kvTbl(y,[
+    ["Submit request",   "poweredbymuse.github.io/ourhouseeventrequest"],
+    ["We review",        "Within 48 hrs - we'll reach out if anything's missing."],
+    ["Deposit due",      "Within 48 hrs of approval to hold your date."],
+    ["Questions?",       "Email info@ourhouse48th.com"],
+  ]);
+
+  // Footer
+  y=np(y,50); y+=8;
+  fill([238,244,240]); doc.rect(18,y,PW-36,36,"F");
+  fill(FOREST); doc.rect(18,y,3,36,"F");
+  rgb(INK); doc.setFont("helvetica","normal"); doc.setFontSize(8.5);
+  const ft="Breakdown based on your submitted numbers. Final amounts confirmed in your booking agreement.";
+  doc.text(doc.splitTextToSize(ft,PW-56),28,y+13);
+
+  return doc.output("datauristring").split(",")[1];
+}
+
+// ── Download checklist — branded PDF ────────────────────────────
+function downloadChecklist(){
+  if(!emailSubmitted) return;
+  const name = firstName()||"Producer";
+  if(!window.jspdf){
+    const s=document.createElement("script");
+    s.src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";
+    s.onload=()=>buildChecklistPDF(name);
+    s.onerror=()=>{ alert("Download unavailable — please check your connection and try again."); };
+    document.head.appendChild(s);
+  } else { buildChecklistPDF(name); }
+}
+
+function buildChecklistPDF(name){
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation:"portrait", unit:"pt", format:"letter" });
+  const PW=612, PH=792;
+  const FOREST=[12,55,34], ORANGE=[228,97,20], AMBER=[220,149,27];
+  const CREAM=[245,244,239], CREAM_D=[228,226,219], INK=[28,28,26], MUTED=[107,117,101];
+  const WHITE=[255,255,255], WARN=[192,57,43], GRN=[122,170,136];
+  let page=1;
+
+  const rgb  = c => doc.setTextColor(c[0],c[1],c[2]);
+  const fill = c => doc.setFillColor(c[0],c[1],c[2]);
+  const drw  = c => doc.setDrawColor(c[0],c[1],c[2]);
+
+  function chrome(){
+    fill(CREAM); doc.rect(0,0,PW,PH,"F");
+    fill(FOREST); doc.rect(0,0,PW,76,"F");
+    fill(ORANGE); doc.rect(0,76,PW,2.5,"F");
+    rgb(GRN); doc.setFont("helvetica","bold"); doc.setFontSize(8);
+    doc.text("OUR HOUSE  \xB7  POWEREDBYMUSE", 36, 28);
+    doc.setFont("helvetica","normal"); doc.setFontSize(7);
+    doc.text("South LA Creative Community Infrastructure", 36, 42);
+    doc.text("The Booking Submission Guide", 36, 56);
+    doc.text("ourhouse48th.com", PW-36, 28, {align:"right"});
+    doc.text("info@ourhouse48th.com", PW-36, 42, {align:"right"});
+    fill(ORANGE); doc.rect(0,78.5,3.5,PH-112,"F");
+    fill(CREAM_D); doc.rect(0,PH-32,PW,32,"F");
+    fill(ORANGE);  doc.rect(0,PH-32,PW,1.5,"F");
+    rgb(MUTED); doc.setFont("helvetica","normal"); doc.setFontSize(6.5);
+    doc.text("Our House  \xB7  POWEREDBYMUSE  \xB7  info@ourhouse48th.com  \xB7  South LA", 36, PH-11);
+    doc.text("Page "+page, PW-36, PH-11, {align:"right"});
+  }
+
+  function secHdr(y, num, title){
+    fill(CREAM_D); doc.rect(18,y,PW-36,22,"F");
+    fill(ORANGE);  doc.rect(18,y,1.5,22,"F");
+    rgb(ORANGE); doc.setFont("helvetica","bold"); doc.setFontSize(7.5);
+    doc.text(num, 26, y+14.5);
+    rgb(FOREST); doc.setFontSize(8);
+    doc.text(title.toUpperCase(), 52, y+14.5);
+    return y+32;
+  }
+
+  function chk(y, text, sub){
+    rgb(FOREST); doc.setFont("helvetica","bold"); doc.setFontSize(11);
+    doc.text("\u2713", 22, y+1);
+    rgb(INK); doc.setFont("helvetica","normal"); doc.setFontSize(9.5);
+    const ls=doc.splitTextToSize(text, PW-80); doc.text(ls,40,y); y+=ls.length*13;
+    if(sub){ rgb(MUTED); doc.setFont("helvetica","italic"); doc.setFontSize(8);
+      const sl=doc.splitTextToSize(sub,PW-80); doc.text(sl,40,y); y+=sl.length*11+2; }
+    return y+5;
+  }
+
+  function star(y, text){
+    rgb(AMBER); doc.setFont("helvetica","bold"); doc.setFontSize(11);
+    doc.text("\u2605", 22, y+1);
+    rgb(INK); doc.setFont("helvetica","normal"); doc.setFontSize(9.5);
+    const ls=doc.splitTextToSize(text,PW-80); doc.text(ls,40,y);
+    return y+ls.length*13+5;
+  }
+
+  function box(y, text, warn){
+    const bg=warn?[253,242,240]:[238,244,240], bd=warn?WARN:FOREST;
+    doc.setFont("helvetica","normal"); doc.setFontSize(9);
+    const ls=doc.splitTextToSize(text,PW-64), h=ls.length*13+18;
+    fill(bg); doc.rect(18,y,PW-36,h,"F");
+    fill(bd); doc.rect(18,y,3,h,"F");
+    rgb(INK); doc.text(ls,28,y+13);
+    return y+h+7;
+  }
+
+  function exBox(y, gText, bText){
+    const cw=(PW-44)/2;
+    const gl=doc.splitTextToSize(gText,cw-18), bl=doc.splitTextToSize(bText,cw-18);
+    const h=Math.max(gl.length,bl.length)*12+32;
+    fill([238,244,240]); doc.rect(18,y,cw,h,"F");
+    fill(FOREST); doc.rect(18,y,cw,2,"F");
+    rgb(FOREST); doc.setFont("helvetica","bold"); doc.setFontSize(7);
+    doc.text("\u2713  STRONG CONCEPT", 24, y+13);
+    rgb(INK); doc.setFont("helvetica","italic"); doc.setFontSize(8.5);
+    doc.text(gl,24,y+25);
+    const bx=20+cw;
+    fill([253,242,240]); doc.rect(bx,y,cw,h,"F");
+    fill(WARN); doc.rect(bx,y,cw,2,"F");
+    rgb(WARN); doc.setFont("helvetica","bold"); doc.setFontSize(7);
+    doc.text("\u2717  WEAK CONCEPT", bx+6, y+13);
+    rgb(INK); doc.setFont("helvetica","italic"); doc.setFontSize(8.5);
+    doc.text(bl,bx+6,y+25);
+    return y+h+10;
+  }
+
+  function tbl(y, hdrs, rows, cw){
+    const tw=cw.reduce((a,b)=>a+b,0), rh=26;
+    fill(FOREST); doc.rect(18,y,tw,rh,"F");
+    rgb(WHITE); doc.setFont("helvetica","bold"); doc.setFontSize(7.5);
+    let cx=18; hdrs.forEach((h,i)=>{ doc.text(h,cx+7,y+17); cx+=cw[i]; }); y+=rh;
+    rows.forEach((row,ri)=>{
+      let maxL=1;
+      row.forEach((cell,ci)=>{ const l=doc.splitTextToSize(cell,cw[ci]-12).length; if(l>maxL)maxL=l; });
+      const rowH=Math.max(rh,maxL*13+14);
+      fill(ri%2===0?WHITE:CREAM); doc.rect(18,y,tw,rowH,"F");
+      drw(CREAM_D); doc.setLineWidth(0.4); doc.line(18,y+rowH,18+tw,y+rowH);
+      cx=18;
+      row.forEach((cell,ci)=>{
+        if(ci===0){ rgb(FOREST); doc.setFont("helvetica","bold"); doc.setFontSize(8.5); }
+        else      { rgb(INK);    doc.setFont("helvetica","normal"); doc.setFontSize(8.5); }
+        const ls=doc.splitTextToSize(cell,cw[ci]-12); doc.text(ls,cx+7,y+15); cx+=cw[ci];
+      });
+      y+=rowH;
+    });
+    drw(CREAM_D); doc.setLineWidth(0.4);
+    return y+10;
+  }
+
+  function grpLbl(y,t){ rgb(FOREST); doc.setFont("helvetica","bold"); doc.setFontSize(8.5); doc.text(t,18,y); return y+14; }
+  function rl(y){ fill(ORANGE); doc.rect(18,y,PW-36,1.5,"F"); return y+8; }
+  function np(y,need){ if(y+need>PH-44){ doc.addPage(); page++; chrome(); return 102; } return y; }
+
+  // ─── CONTENT ──────────────────────────────────────────────────
+  chrome();
+  let y=102;
+
+  // Title
+  rgb(FOREST); doc.setFont("helvetica","bold"); doc.setFontSize(24);
+  doc.text("The Booking Submission Guide", 18, y); y+=30;
+  rgb(MUTED); doc.setFont("helvetica","italic"); doc.setFontSize(11);
+  doc.text("Everything you need to know to submit a request that gets a yes.", 18, y); y+=14;
+  if(name&&name!=="Producer"){ rgb(MUTED); doc.setFont("helvetica","normal"); doc.setFontSize(9); doc.text("Prepared for: "+name,18,y); y+=14; }
+  fill(ORANGE); doc.rect(18,y,PW-36,2,"F"); y+=12;
+  rgb(INK); doc.setFont("helvetica","normal"); doc.setFontSize(9.5);
+  const introT="Our House is infrastructure for serious creatives \u2014 not a venue rental, not a community center. Every booking we accept has to work financially for both sides and align with the kind of space we\u2019re building in South LA. This guide walks you through exactly what we look for, what gets requests rejected, and how to put together something we\u2019re excited to say yes to.";
+  const introL=doc.splitTextToSize(introT,PW-36); doc.text(introL,18,y); y+=introL.length*13+14;
+
+  // 01 Event Concept
+  y=np(y,80); y=secHdr(y,"01 /","Your Event Concept");
+  rgb(INK); doc.setFont("helvetica","normal"); doc.setFontSize(9.5);
+  const s1T="Your concept description is the first thing we read. It tells us whether you\u2019ve actually thought this through or whether you\u2019re figuring it out as you go. We\u2019re looking for clarity on who this is for, what the experience is, and why Our House is the right space for it.";
+  const s1L=doc.splitTextToSize(s1T,PW-36); doc.text(s1L,18,y); y+=s1L.length*13+10;
+  y=np(y,120);
+  y=exBox(y,
+    "\u201CA monthly evening market for South LA creatives \u2014 15 vendors, live DJ, intentional networking. Targeting 35-45 attendees. Our audience already follows the brand (4.2k IG) and we\u2019ve sold out two previous pop-ups.\u201D",
+    "\u201CA vibe event with music and vendors. Should be fun, targeting young creatives in LA. Expecting around 40 people.\u201D"
+  );
+  y=np(y,60);
+  y=box(y,"If you\u2019re newer to hosting: evidence doesn\u2019t have to be a sellout event. A strong social following, a track record of organizing community gatherings, or a co-producer with experience all count. Name it explicitly in your request.");
+
+  // 02 Financial Readiness
+  y=np(y,60); y=secHdr(y,"02 /","Your Numbers \u2014 Financial Readiness");
+  rgb(INK); doc.setFont("helvetica","normal"); doc.setFontSize(9.5);
+  const s2T="Run the Our House calculator before you submit. Know your breakeven, your deposit, and your realistic take-home. Requests that come in without this clarity take longer to review and are harder to approve.";
+  const s2L=doc.splitTextToSize(s2T,PW-36); doc.text(s2L,18,y); y+=s2L.length*13+10;
+  y=np(y,140);
+  y=tbl(y,["BOOKING MODEL","DEPOSIT","WHEN DUE","HOW IT WORKS"],[
+    ["Revenue Share (Member)",     "$0 \u2014 waived",     "N/A",                "Your 40% split starts from ticket 1"],
+    ["Revenue Share (Non-Member)", "30% of house cap",    "Applied at payout",  "Deposit toward Our House\u2019s share. Non-refundable."],
+    ["Standard Hourly",            "50% of room fee",     "24 hrs before event","Flat fee. You keep 100% of ticket sales above cost."],
+  ],[130,100,100,PW-36-330]);
+  y=np(y,50);
+  y=box(y,"Know your breakeven before you submit. Use the calculator at poweredbymuse.github.io/ourhousecalculator to see exactly how many tickets you need to sell to cover your deposit.");
+
+  // 03 Strong Request
+  y=np(y,140); y=secHdr(y,"03 /","What Makes a Strong Request");
+  y=star(y,"A concept description that names the vibe, the audience, and the purpose \u2014 not just a genre and a date.");
+  y=star(y,"A realistic attendance projection with reasoning behind it, not just the room maximum.");
+  y=star(y,"Named collaborators with actual roles. \u201CDJ TBD\u201D is a flag. \u201CDJ Marcus Webb, confirmed\u201D is not.");
+  y=star(y,"Evidence of past hosting \u2014 a sellout, a following, co-producer experience, or community credibility.");
+  y=star(y,"A ticket price with thought behind it. If you\u2019re doing Revenue Share, show us the math works.");
+  y=star(y,"A promotion plan. How are you driving ticket sales independently of Our House?");
+
+  // 04 Rejections
+  y=np(y,200); y=secHdr(y,"04 /","What Gets Requests Rejected");
+  y=box(y,"Missing or vague collaborator information. If we can\u2019t see who\u2019s on your team and what they\u2019re doing, we can\u2019t confirm. Every collaborator needs a role and an exchange type.",true);
+  y=box(y,"No promotion plan. We\u2019re not your marketing department. If your plan is \u201Cpost on Instagram a few days before,\u201D that\u2019s not a plan. Tell us how you\u2019re filling the room.",true);
+  y=box(y,"Numbers that don\u2019t work. If your breakeven requires selling out a Full House at $20/ticket, we\u2019re going to catch it. Run the calculator first.",true);
+  y=box(y,"Misaligned expectations. Our House is not a party venue. Requests that don\u2019t align with our creative community mission get deprioritized.",true);
+  y=box(y,"Incomplete submission. Missing fields, undefined roles, or no clear concept go to the bottom of the review queue.",true);
+
+  // 05 Collaborator
+  y=np(y,220); y=secHdr(y,"05 /","Your Collaborator Team \u2014 Filled-In Example");
+  rgb(INK); doc.setFont("helvetica","normal"); doc.setFontSize(9.5);
+  doc.text("Every person on your team needs a completed brief before we confirm. Here\u2019s what a complete one looks like:",18,y); y+=18;
+  y=tbl(y,["FIELD","EXAMPLE (FILLED IN)"],[
+    ["Name / Brand",  "DJ Marcus Webb"],
+    ["Role / Type",   "DJ \u2014 2-hour opening set"],
+    ["Exchange Type", "Flat Fee \u2014 $150, paid same night"],
+    ["Contact Info",  "marcuswebb@gmail.com  \xB7  (323) 555-0182"],
+    ["Tasks",         "Arrive 45 min early. Play 8\u201310pm. Bring own controller."],
+    ["Payout / Fee",  "$150 flat, Zelle, paid at end of event"],
+    ["Payment Date",  "Night of event \u2014 not tied to ticket sales"],
+  ],[130,PW-36-130]);
+  y=np(y,50);
+  y=box(y,"Use the Our House Event Collaboration Planning Form at ourhouse48th.com to generate individual Collaborator Briefs for every person on your team. Completed briefs can be attached directly to your booking request.");
+
+  // 06 After Submit
+  y=np(y,180); y=secHdr(y,"06 /","After You Submit \u2014 What Happens Next");
+  y=tbl(y,["TIMELINE","WHAT HAPPENS"],[
+    ["Within 48 hrs",     "We review your submission. If something\u2019s missing, we\u2019ll reach out before declining."],
+    ["If approved",       "You\u2019ll receive a booking confirmation and deposit invoice. Deposit due within 72 hours."],
+    ["2\u20133 weeks out",      "Final collaborator briefs due. Guest list sent 24 hrs before event."],
+    ["Remaining balance", "Standard Hourly: remaining 50% due 24 hrs before. Revenue Share: settled at payout."],
+    ["After the event",   "Revenue Share payouts processed within 5\u20137 business days."],
+  ],[110,PW-36-110]);
+
+  // 07 Checklist
+  y=np(y,300); y=secHdr(y,"07 /","Submit-Ready Checklist");
+  rgb(MUTED); doc.setFont("helvetica","italic"); doc.setFontSize(9);
+  doc.text("Check every box before you hit submit.",18,y); y+=16;
+
+  y=grpLbl(y,"Your Concept");
+  y=chk(y,"Event name, vibe, audience, and purpose are clearly described.");
+  y=chk(y,"You have an attendance estimate with reasoning behind it.");
+  y=chk(y,"You have an independent promotion plan.");
+
+  y+=4; y=grpLbl(y,"Your Numbers");
+  y=chk(y,"You\u2019ve run the Our House calculator and know your breakeven.","poweredbymuse.github.io/ourhousecalculator");
+  y=chk(y,"You can cover your deposit before the event date.","Revenue Share: 30% of house cap.  Standard Hourly: 50% of room fee.");
+  y=chk(y,"You have a payment method ready \u2014 Zelle, Cash App, or Venmo.");
+
+  y+=4; y=grpLbl(y,"Your Collaborator Team");
+  y=chk(y,"Every collaborator has a name, role, exchange type, and contact info.");
+  y=chk(y,"No roles are listed as \u201CTBD\u201D \u2014 all key positions are confirmed.");
+  y=chk(y,"Revenue Share collaborators understand the 5\u20137 day payout timeline.");
+  y=chk(y,"No collaborator has been promised terms that conflict with your Our House agreement.");
+
+  y+=4; y=grpLbl(y,"Your Evidence");
+  y=chk(y,"You\u2019ve included past hosting experience, a social following, or a co-producer reference.");
+  y=chk(y,"Your attendance projection is realistic given your actual audience size.");
+
+  y=np(y,40); y+=6; rl(y); y+=14;
+  rgb(INK); doc.setFont("helvetica","normal"); doc.setFontSize(9.5);
+  doc.text("Ready? Submit at ourhouse48th.com or email info@ourhouse48th.com",18,y);
+
+  const fn=(name.replace(/[^a-z0-9]/gi,"_")+"_OurHouse_BookingGuide.pdf");
+  doc.save(fn);
+}
+
+// ── Submit event request ─────────────────────────────────────────
+function submitEventRequest(){
+  const name  = firstName()||'';
+  const email = $('e-email')?.value?.trim()||'';
+  const price = lastCalc.price||'';
+  const tickets = lastCalc.tickets||'';
+  const room  = S.roomKey ? ({cs:'Creative Suite',loft:'The Loft',fh:'Full House'}[S.roomKey]) : '';
+  const model = lastCalc.rsElig ? 'Revenue Share' : 'Standard Hourly';
+  const subj  = encodeURIComponent(`Event Request${name?' — '+name:''} | Our House`);
+  const body  = encodeURIComponent(
+    `Hi Our House team,\n\nI'd like to submit an event request.\n\n`
+    +(name?`Name: ${name}\n`:'')
+    +(email?`Email: ${email}\n`:'')
+    +(room?`Room: ${room}\n`:'')
+    +(price?`Ticket Price: $${price}\n`:'')
+    +(tickets?`Expected Tickets: ${tickets}\n`:'')
+    +`Booking Model: ${model}\n\n`
+    +`Please reach out to discuss availability and next steps.\n\nThank you!`
+  );
+  window.location.href=`mailto:info@ourhouse48th.com?subject=${subj}&body=${body}`;
+}
+
+$('e-email').addEventListener('keydown', e=>{ if(e.key==='Enter') submitEmail(); });
+</script>
+</body>
+</html>
