@@ -571,11 +571,11 @@ body::after {
       <div class="tog-row" onclick="toggleMember()">
         <div class="tog-lbl">
           <strong>I'm an Our House Member</strong>
-          <small>20% off Standard Hourly &nbsp;·&nbsp; No deposit on Revenue Share &nbsp;·&nbsp; Priority booking</small>
+          <small>30% off Standard Hourly &nbsp;·&nbsp; No deposit on Revenue Share &nbsp;·&nbsp; Priority booking</small>
         </div>
         <div class="knob" id="knob"></div>
       </div>
-      <div class="mem-note" id="mem-note">✓ &nbsp;Member discount applied. 20% off Standard Hourly. Revenue Share — no deposit required, split starts from dollar one.</div>
+      <div class="mem-note" id="mem-note">✓ &nbsp;Member discount applied. 30% off Standard Hourly. Revenue Share — no deposit required, split starts from dollar one.</div>
       <p class="nonmem-note" id="nonmem-note">Not a member? <a href="#">Learn about membership →</a> &nbsp;|&nbsp; Non-members: <strong style="color:var(--cream)">30% deposit</strong> on Revenue Share &nbsp;·&nbsp; <strong style="color:var(--cream)">50% deposit</strong> on Standard Hourly.</p>
     </div>
   </div>
@@ -756,7 +756,7 @@ body::after {
 </div>
 
 <script>
-const MIN_RS_PRICE=30, OH_SPLIT=0.60, ADMIN_FEE=0.20, RS_DEP_NM=0.30, HR_DEP=0.50, MEM_DISC=0.20;
+const MIN_RS_PRICE=30, OH_SPLIT=0.60, ADMIN_FEE=0.20, RS_DEP_NM=0.30, HR_DEP=0.50, MEM_DISC=0.30;
 const S = { roomKey:null, roomRate:0, roomCap:0, isMember:false };
 let emailSubmitted = false;
 let lastCalc = {};
@@ -822,46 +822,55 @@ function calc(){
   let evtHrs = endH-startH; if(evtHrs<=0) evtHrs+=24;
   const billable = evtHrs + Math.max(0,xSetup) + Math.max(0,xBkdn);
   const stdRoomCost = billable * S.roomRate;
+
+  // Member benefits:
+  //   - 30% off room rate (vs 20% before)
+  //   - No admin fee on Revenue Share (house cap = discounted room cost only)
+  //   - No deposit on Revenue Share
+  const memRate     = S.roomRate * (1 - MEM_DISC);        // 30% off
+  const memRoomCost = billable * memRate;                  // discounted room cost
+
+  // House cap: members skip the 20% admin fee entirely
   const adminAmt    = stdRoomCost * ADMIN_FEE;
-  const houseCap    = stdRoomCost + adminAmt;
-  const memRate     = S.roomRate * (1-MEM_DISC);
-  const hrRoomCost  = S.isMember ? billable*memRate : stdRoomCost;
+  const houseCap    = S.isMember ? memRoomCost : stdRoomCost + adminAmt;
+
+  // Standard Hourly room cost
+  const hrRoomCost  = S.isMember ? memRoomCost : stdRoomCost;
   const gross       = price * tickets;
 
   // Revenue Share
   const rsElig     = price >= MIN_RS_PRICE;
-  const rsDepAmt   = houseCap * RS_DEP_NM;  // deposit = 30% of cap, paid upfront
-  // OH is owed min(gross*60%, cap). Deposit already paid counts toward that.
-  // OH collects from event: max(0, ohOwed - deposit). If gross is tiny, OH keeps deposit and pays out gross.
-  const ohOwed     = rsElig ? Math.min(gross*OH_SPLIT, houseCap) : 0;
-  const ohTake     = ohOwed;  // total OH receives including deposit credit
-  const ohFromEvent = rsElig ? Math.max(0, ohOwed - rsDepAmt) : 0;  // what OH collects at the event
-  const capHit     = rsElig && ohOwed >= houseCap;
-  // Producer receives: gross minus what OH collects from the event
-  const rsTake  = rsElig ? gross - ohFromEvent : null;  // cash producer gets back at event
-  // Producer net = cash received back minus deposit already paid
-  const rsNet   = rsElig&&!S.isMember ? rsTake - rsDepAmt : rsTake;
-  // Breakeven for non-members: deposit is at risk. They break even when rsNet >= 0
-  // rsNet = gross - max(0, ohOwed - dep) - dep
-  // At low gross: ohOwed = gross*0.6, ohFromEvent = 0 (dep > ohOwed), rsTake = gross, rsNet = gross - dep
-  // rsNet >= 0 when gross >= dep => breakeven = ceil(dep / price)
-  // At high gross: ohOwed > dep, ohFromEvent = ohOwed - dep, rsTake = gross - ohOwed + dep, rsNet = gross - ohOwed
-  // These are two different regimes; find which applies
-  const depBreakeven = rsElig&&!S.isMember ? Math.ceil(rsDepAmt / price) : null;
-  // Cap breakeven: tickets to hit house cap (OH takes full cap, producer gets all above)
-  const breakeven  = rsElig ? Math.ceil(houseCap / (price*OH_SPLIT)) : null;
+
+  // Deposit: members pay nothing, non-members pay 30% of house cap
+  const rsDepAmt   = S.isMember ? 0 : houseCap * RS_DEP_NM;
+
+  // OH is owed min(gross*60%, cap)
+  const ohOwed      = rsElig ? Math.min(gross*OH_SPLIT, houseCap) : 0;
+  const ohTake      = ohOwed;
+  const ohFromEvent = rsElig ? Math.max(0, ohOwed - rsDepAmt) : 0;
+  const capHit      = rsElig && ohOwed >= houseCap;
+
+  // Producer take: gross minus what OH collects at the door
+  const rsTake  = rsElig ? gross - ohFromEvent : null;
+  // Producer net: subtract deposit already paid (0 for members)
+  const rsNet   = rsElig ? rsTake - rsDepAmt : null;
   const rsNeg   = rsElig && rsNet !== null && rsNet < 0;
 
+  // Breakeven: non-members need enough tickets to recover deposit
+  const depBreakeven = rsElig && !S.isMember ? Math.ceil(rsDepAmt / price) : null;
+  // Cap breakeven: tickets to hit house cap
+  const breakeven  = rsElig ? Math.ceil(houseCap / (price*OH_SPLIT)) : null;
+
   // Standard Hourly
-  const hrTake     = gross - hrRoomCost;
-  const hrDepAmt   = hrRoomCost * HR_DEP;
+  const hrTake      = gross - hrRoomCost;
+  const hrDepAmt    = hrRoomCost * HR_DEP;
   const hrRemaining = hrRoomCost - hrDepAmt;
   const hrBreakeven = Math.ceil(hrRoomCost / price);
 
-  // Store for scenario slider
+  // Store for scenario slider + PDF
   lastCalc = { price, tickets, houseCap, hrRoomCost, rsElig, breakeven, depBreakeven, hrBreakeven,
                gross, ohTake, ohOwed, ohFromEvent, rsTake, rsNet, hrTake, rsNeg, capHit, memRate, stdRoomCost,
-               rsDepAmt, hrDepAmt, hrRemaining, billable };
+               rsDepAmt, hrDepAmt, hrRemaining, billable, memRoomCost, isMember: S.isMember };
 
   // ── Greeting bar ──────────────────────────────────────────────
   if(name){
@@ -909,7 +918,11 @@ function calc(){
     h += `<div class="brow-sub">${tickets} tickets × ${fmtD(price)}</div>`;
 
     h += brow(`Our House takes (60%${capHit?' — capped':''})`, fmtD(ohTake), 'dim');
-    h += `<div class="brow-sub">House Cap = room cost ${fmtD(stdRoomCost)} + 20% admin ${fmtD(adminAmt)} = <strong>${fmtD(houseCap)}</strong> max. Our House never takes more than the cap, even if 60% of sales exceeds it.</div>`;
+    if(S.isMember){
+      h += `<div class="brow-sub">House Cap = 30% off room rate ${fmtD(memRoomCost)} (no admin fee — member benefit) = <strong>${fmtD(houseCap)}</strong> max. Our House never takes more than the cap, even if 60% of sales exceeds it.</div>`;
+    } else {
+      h += `<div class="brow-sub">House Cap = room cost ${fmtD(stdRoomCost)} + 20% admin ${fmtD(adminAmt)} = <strong>${fmtD(houseCap)}</strong> max. Our House never takes more than the cap, even if 60% of sales exceeds it.</div>`;
+    }
 
     h += brow('Your Gross Share (40%)', fmtD(rsTake), rsTake < (S.isMember ? 0 : rsDepAmt) ? 'warn' : 'ora');
 
@@ -955,7 +968,7 @@ function calc(){
   let hh='';
   hh += brow('Total Ticket Sales (Gross)', fmtD(gross));
   hh += `<div class="brow-sub">${tickets} tickets × ${fmtD(price)}</div>`;
-  if(S.isMember) hh += brow('Member Discount (20% off room rate)', `−${fmtD(stdRoomCost*MEM_DISC)}`, 'amb');
+  if(S.isMember) hh += brow('Member Discount (30% off room rate)', `−${fmtD(stdRoomCost*MEM_DISC)}`, 'amb');
   hh += brow(`Room Fee (${billable.toFixed(1)} hrs × $${S.isMember?memRate.toFixed(0):S.roomRate}/hr)`, fmtD(hrRoomCost), 'dim');
   hh += `<div class="brow-sub">You keep 100% of ticket sales. Room fee is the only cost.</div>`;
   hh += brow('Your Take-Home', fmtD(hrTake), hrTake>=0?'amb':'warn');
@@ -1024,7 +1037,8 @@ function buildSliderTicks(max){
 function updateScenario(val, silent){
   const t = parseInt(val);
   if(!lastCalc.price) return;
-  const { price, houseCap, hrRoomCost, rsElig, rsDepAmt } = lastCalc;
+  const { price, houseCap, hrRoomCost, rsElig, rsDepAmt, memRoomCost: lcMemRoomCost } = lastCalc;
+  const memRoomCost = lcMemRoomCost || 0;
   const gross = price * t;
   const ohOwedSc = rsElig ? Math.min(gross*OH_SPLIT, houseCap) : 0;
   const ohFromEventSc = rsElig ? Math.max(0, ohOwedSc - rsDepAmt) : 0;
@@ -1287,7 +1301,7 @@ function buildBreakdownPDF(name, email){
       S.isMember?GRN:ORANGE);
     metricCard(18+cw,   y, cw-3, ch, "Our House Cap",
       mon(lc.houseCap),
-      "Room x hrs x 1.20 admin fee",
+      S.isMember ? "30% off room rate — no admin fee (member benefit)" : "Room x hrs x 1.20 admin fee",
       FOREST);
     metricCard(18+cw*2, y, cw-3, ch, "Your Est. Take",
       mon(lc.rsTake),
@@ -1316,7 +1330,7 @@ function buildBreakdownPDF(name, email){
     const dep = S.isMember ? 0 : lc.rsDepAmt;
     plRows=[
       ["Gross Ticket Revenue",  mon(lc.gross),           lc.tickets+" tickets x "+mon(lc.price)],
-      ["Our House Cap (60%)",   mon(lc.houseCap),        "Room fee x hrs x 1.20 admin"],
+      ["Our House Cap (60%)",   mon(lc.houseCap),        lc.isMember ? "30% off room rate, no admin fee (member benefit)" : "Room fee x hrs x 1.20 admin"],
       ["Your Gross Take (40%)", mon(lc.rsTake),          "40% of gross ticket revenue"],
       ["Less: Deposit",         S.isMember?"Waived":"-"+mon(dep), "Applied at payout . non-refundable"],
       ["Your Net Take-Home",    mon(S.isMember?lc.rsTake:lc.rsNet), "After deposit settled"],
